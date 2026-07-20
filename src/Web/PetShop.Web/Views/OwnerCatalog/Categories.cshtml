@@ -1,2 +1,23 @@
-@model IReadOnlyCollection<CategoryVm>
-@{ViewData["Title"]="Danh mục Shop";}<h2>Danh mục của Shop</h2>@if(ViewBag.Error!=null){<div class="alert alert-danger">@ViewBag.Error</div>}<form asp-action="CreateCategory" method="post" class="row g-2 mb-3"><div class="col"><input name="Name" class="form-control" required placeholder="Tên danh mục"/></div><div class="col"><input name="Description" class="form-control" placeholder="Mô tả"/></div><div class="col-auto"><button class="btn btn-success">Thêm</button></div></form><table class="table"><tbody>@foreach(var c in Model){<tr><td>@c.Name</td><td>@c.Description</td><td><form asp-action="DeleteCategory" method="post"><input type="hidden" name="id" value="@c.Id"/><button class="btn btn-sm btn-danger">Xóa</button></form></td></tr>}</tbody></table>
+@model OwnerCategoriesPageVm
+@{ ViewData["Title"] = "Danh mục Shop"; }
+<div class="page-head"><div><span class="eyebrow">Catalog Studio</span><h1>Danh mục sản phẩm</h1><p>Tổ chức sản phẩm để khách hàng tìm thấy nhanh hơn.</p></div></div>
+<nav class="owner-tabs"><a class="active" asp-action="Categories">Danh mục</a><a asp-action="Products">Sản phẩm</a></nav>
+@if (ViewBag.Error is string error) { <div class="alert alert-danger"><i data-lucide="circle-alert"></i>@error</div> }
+<div class="row g-4">
+    <div class="col-lg-4">
+        <form asp-action="SaveCategory" method="post" class="surface panel" novalidate>
+            <input asp-for="Form.Id" type="hidden" />
+            <h2 class="h5 mb-3">@(Model.Form.Id == Guid.Empty ? "Thêm danh mục" : "Chỉnh sửa danh mục")</h2>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            <div class="mb-3"><label asp-for="Form.Name" class="form-label"></label><input asp-for="Form.Name" class="form-control" required minlength="2" maxlength="150" /><span asp-validation-for="Form.Name" class="text-danger"></span></div>
+            <div class="mb-3"><label asp-for="Form.Description" class="form-label"></label><textarea asp-for="Form.Description" class="form-control" rows="4" maxlength="500"></textarea><span asp-validation-for="Form.Description" class="text-danger"></span></div>
+            <div class="form-check form-switch mb-3"><input asp-for="Form.IsActive" class="form-check-input" /><label asp-for="Form.IsActive" class="form-check-label"></label></div>
+            <div class="d-flex gap-2"><button class="btn btn-primary flex-grow-1"><i data-lucide="save"></i>Lưu danh mục</button>@if(Model.Form.Id != Guid.Empty){<a class="btn btn-light" asp-action="Categories">Hủy</a>}</div>
+        </form>
+    </div>
+    <div class="col-lg-8"><div class="surface table-responsive"><table class="table"><thead><tr><th>Danh mục</th><th>Trạng thái</th><th>Ngày tạo</th><th></th></tr></thead><tbody>
+    @foreach (var category in Model.Items) { <tr><td><strong>@category.Name</strong><div class="small text-secondary mt-1">@(category.Description ?? "Chưa có mô tả")</div></td><td><span class="status @(category.IsActive ? "status-on" : "status-off")">@(category.IsActive ? "Hoạt động" : "Đã ẩn")</span></td><td>@category.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td><td><div class="action-row"><a class="btn btn-light icon-btn" asp-action="Categories" asp-route-editId="@category.Id" title="Sửa"><i data-lucide="pencil"></i></a><form asp-action="DeleteCategory" method="post" onsubmit="return confirm('Xóa danh mục này?');"><input type="hidden" name="id" value="@category.Id"/><button class="btn btn-light icon-btn text-danger" title="Xóa"><i data-lucide="trash-2"></i></button></form></div></td></tr> }
+    @if (!Model.Items.Any()) { <tr><td colspan="4"><div class="empty"><i data-lucide="folders"></i><div>Shop chưa có danh mục nào.</div></div></td></tr> }
+    </tbody></table></div></div>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

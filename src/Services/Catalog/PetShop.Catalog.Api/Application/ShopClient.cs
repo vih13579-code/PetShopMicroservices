@@ -15,6 +15,14 @@ public sealed class ShopClient(HttpClient httpClient, IConfiguration configurati
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<OwnedShop>();
     }
+
+    public async Task<IReadOnlyCollection<Guid>> GetActiveShopIdsAsync()
+    {
+        var shops = await httpClient.GetFromJsonAsync<IReadOnlyCollection<PublicShop>>("api/shops/public");
+        return shops?.Select(x => x.Id).ToArray() ?? [];
+    }
+
+    private sealed record PublicShop(Guid Id);
 }
 
 
