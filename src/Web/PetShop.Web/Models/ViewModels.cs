@@ -17,7 +17,15 @@ public class RegisterVm
     public string? Address { get; set; }
 }
 public sealed record UserVm(Guid Id, string FullName, string Email, string? Phone, string? Address,
-    bool IsActive, DateTime CreatedAt, IReadOnlyCollection<string> Roles);
+    bool IsActive, DateTime CreatedAt, IReadOnlyCollection<string> Roles)
+{
+    public bool IsInRole(string role) => Roles != null && Roles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
+    public bool HasAnyRole(params string[] roles) => Roles != null && roles.Any(r => IsInRole(r));
+    public bool IsAdmin => IsInRole("Admin");
+    public bool IsStaff => IsInRole("Staff");
+    public bool IsShopOwner => IsInRole("ShopOwner");
+    public bool IsCustomer => IsInRole("Customer");
+}
 public sealed record TokenVm(string AccessToken, DateTime AccessTokenExpiresAt, string RefreshToken,
     DateTime RefreshTokenExpiresAt, UserVm User);
 public sealed record PagedVm<T>(IReadOnlyCollection<T> Items, int Page, int PageSize, int TotalItems, int TotalPages);
@@ -87,3 +95,4 @@ public sealed class ShopEditVm
     public string? TaxCode { get; set; }
 }
 public sealed class StaffFormVm : RegisterVm { }
+public sealed record RevenueReportVm(decimal TotalRevenue, int TotalOrders, int CompletedOrders, int CancelledOrders, DateTime? FromDate, DateTime? ToDate);

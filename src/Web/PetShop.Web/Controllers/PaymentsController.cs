@@ -9,6 +9,7 @@ public sealed class PaymentsController(GatewayApiClient api) : Controller
     [HttpPost]
     public async Task<IActionResult> Create(Guid orderId, string method)
     {
+        if (!api.IsLoggedIn) return RedirectToAction("Login", "Account");
         var r = await api.PostAsync<PaymentVm>("api/payments", new { orderId, method });
         if (!r.Success || r.Data is null) { TempData["Error"] = r.Error; return RedirectToAction("Details", "Orders", new { id = orderId }); }
         if (r.Data.Status == "Pending" && r.Data.Method == "BankTransferMock")
@@ -18,6 +19,7 @@ public sealed class PaymentsController(GatewayApiClient api) : Controller
     [HttpGet]
     public async Task<IActionResult> Confirm(Guid id)
     {
+        if (!api.IsLoggedIn) return RedirectToAction("Login", "Account");
         var r = await api.PostAsync<PaymentVm>($"api/payments/{id}/confirm-mock");
         TempData[r.Success ? "Success" : "Error"] = r.Success ? "Thanh toán mô phỏng thành công." : r.Error;
         return RedirectToAction("Index", "Orders");

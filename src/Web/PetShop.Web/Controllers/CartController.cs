@@ -28,10 +28,17 @@ public sealed class CartController(GatewayApiClient api) : Controller
         await api.DeleteAsync<object>($"api/cart/items/{itemId}"); return RedirectToAction("Index");
     }
 
-    [HttpGet] public IActionResult Checkout() => View(new CheckoutVm());
+    [HttpGet]
+    public IActionResult Checkout()
+    {
+        if (!api.IsLoggedIn) return RedirectToAction("Login", "Account");
+        return View(new CheckoutVm());
+    }
+
     [HttpPost]
     public async Task<IActionResult> Checkout(CheckoutVm model)
     {
+        if (!api.IsLoggedIn) return RedirectToAction("Login", "Account");
         if (!ModelState.IsValid) return View(model);
         var result = await api.PostAsync<IReadOnlyCollection<OrderVm>>("api/orders/checkout", model);
         if (!result.Success) { ModelState.AddModelError(string.Empty, result.Error ?? "Không thể đặt hàng."); return View(model); }
