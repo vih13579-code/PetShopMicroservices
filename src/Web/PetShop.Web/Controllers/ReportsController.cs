@@ -17,7 +17,7 @@ public sealed class ReportsController(GatewayApiClient api) : Controller
 
         var fromStr = from?.ToString("yyyy-MM-dd");
         var toStr = to?.ToString("yyyy-MM-dd");
-        var url = $"api/orders/reports/shop?from={fromStr}&to={toStr}";
+        var url = $"api/orders/reports/owner-revenue?from={fromStr}&to={toStr}";
         var result = await api.GetAsync<RevenueReportVm>(url);
         ViewBag.From = from;
         ViewBag.To = to;
@@ -36,7 +36,7 @@ public sealed class ReportsController(GatewayApiClient api) : Controller
 
         var fromStr = from?.ToString("yyyy-MM-dd");
         var toStr = to?.ToString("yyyy-MM-dd");
-        var url = $"api/orders/reports/admin?from={fromStr}&to={toStr}";
+        var url = $"api/orders/reports/system-revenue?from={fromStr}&to={toStr}";
         var result = await api.GetAsync<RevenueReportVm>(url);
         ViewBag.From = from;
         ViewBag.To = to;

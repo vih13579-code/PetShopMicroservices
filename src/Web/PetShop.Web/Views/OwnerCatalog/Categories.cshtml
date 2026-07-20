@@ -1,2 +1,127 @@
 @model IReadOnlyCollection<CategoryVm>
-@{ViewData["Title"]="Danh mục Shop";}<h2>Danh mục của Shop</h2>@if(ViewBag.Error!=null){<div class="alert alert-danger">@ViewBag.Error</div>}<form asp-action="CreateCategory" method="post" class="row g-2 mb-3"><div class="col"><input name="Name" class="form-control" required placeholder="Tên danh mục"/></div><div class="col"><input name="Description" class="form-control" placeholder="Mô tả"/></div><div class="col-auto"><button class="btn btn-success">Thêm</button></div></form><table class="table"><tbody>@foreach(var c in Model){<tr><td>@c.Name</td><td>@c.Description</td><td><form asp-action="DeleteCategory" method="post"><input type="hidden" name="id" value="@c.Id"/><button class="btn btn-sm btn-danger">Xóa</button></form></td></tr>}</tbody></table>
+@{
+    ViewData["Title"] = "Quản lý Danh mục";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark mb-0">
+        <i class="bi bi-tags text-primary me-2"></i>Danh mục sản phẩm Cửa hàng
+    </h2>
+    <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại Dashboard
+    </a>
+</div>
+
+@if (TempData["Success"] is string successMsg)
+{
+    <div class="alert alert-success shadow-sm mb-4"><i class="bi bi-check-circle me-1"></i>@successMsg</div>
+}
+@if (TempData["Error"] is string errorMsg)
+{
+    <div class="alert alert-danger shadow-sm mb-4"><i class="bi bi-exclamation-triangle me-1"></i>@errorMsg</div>
+}
+@if (ViewBag.Error is string err)
+{
+    <div class="alert alert-danger shadow-sm mb-4">@err</div>
+}
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 border-0">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-plus-circle me-2 text-success"></i>Tạo Danh mục Mới</h5>
+    </div>
+    <div class="card-body pt-0">
+        <form asp-action="CreateCategory" method="post" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label small fw-semibold">Tên danh mục</label>
+                <input name="Name" class="form-control" required placeholder="Nhập tên danh mục (VD: Thức ăn khô...)" />
+            </div>
+            <div class="col-md-5">
+                <label class="form-label small fw-semibold">Mô tả ngắn</label>
+                <input name="Description" class="form-control" placeholder="Mô tả danh mục..." />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-success w-100 fw-semibold">
+                    <i class="bi bi-plus-lg me-1"></i>Tạo
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Tên danh mục</th>
+                        <th>Mô tả</th>
+                        <th>Ngày tạo</th>
+                        <th class="text-end pe-3">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">Chưa có danh mục nào. Hãy tạo mới bên trên.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var c in Model)
+                        {
+                            <tr>
+                                <td class="ps-3 fw-bold text-dark">@c.Name</td>
+                                <td><span class="text-muted">@(string.IsNullOrWhiteSpace(c.Description) ? "-" : c.Description)</span></td>
+                                <td class="small text-muted">@c.CreatedAt.ToString("dd/MM/yyyy")</td>
+                                <td class="text-end pe-3">
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal-@c.Id" title="Chỉnh sửa">
+                                            <i class="bi bi-pencil"></i> Sửa
+                                        </button>
+                                        <form asp-action="DeleteCategory" method="post" class="d-inline">
+                                            <input type="hidden" name="id" value="@c.Id" />
+                                            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Bạn có chắc chắn muốn xóa danh mục này?');" title="Xóa">
+                                                <i class="bi bi-trash"></i> Xóa
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    <!-- Modal Sửa Danh Mục -->
+                                    <div class="modal fade text-start" id="editModal-@c.Id" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <form asp-action="EditCategory" method="post">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title fw-bold">Chỉnh sửa danh mục</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <input type="hidden" name="id" value="@c.Id" />
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-semibold">Tên danh mục</label>
+                                                            <input name="Name" value="@c.Name" class="form-control" required />
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-semibold">Mô tả</label>
+                                                            <textarea name="Description" class="form-control" rows="3">@c.Description</textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                                                        <button type="submit" class="btn btn-warning fw-bold">Lưu thay đổi</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

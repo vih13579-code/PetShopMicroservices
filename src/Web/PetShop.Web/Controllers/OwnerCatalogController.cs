@@ -35,6 +35,15 @@ public sealed class OwnerCatalogController(GatewayApiClient api) : Controller
     }
 
     [HttpPost]
+    public async Task<IActionResult> EditCategory(Guid id, CategoryFormVm model)
+    {
+        var guard = CheckShopOwnerRole(); if (guard != null) return guard;
+        var r = await api.PutAsync<CategoryVm>($"api/owner/catalog/categories/{id}", model);
+        TempData[r.Success ? "Success" : "Error"] = r.Success ? "Đã cập nhật danh mục." : r.Error;
+        return RedirectToAction("Categories");
+    }
+
+    [HttpPost]
     public async Task<IActionResult> DeleteCategory(Guid id)
     {
         var guard = CheckShopOwnerRole(); if (guard != null) return guard;
@@ -43,12 +52,34 @@ public sealed class OwnerCatalogController(GatewayApiClient api) : Controller
         return RedirectToAction("Categories");
     }
 
-    public async Task<IActionResult> Products()
+    public async Task<IActionResult> Products(string? keyword, Guid? categoryId, bool? isActive)
     {
         var guard = CheckShopOwnerRole(); if (guard != null) return guard;
-        var result = await api.GetAsync<PagedVm<ProductVm>>("api/owner/catalog/products?page=1&pageSize=100");
+        var url = "api/owner/catalog/products?page=1&pageSize=100";
+        if (!string.IsNullOrWhiteSpace(keyword)) url += $"&keyword={Uri.EscapeDataString(keyword)}";
+        if (categoryId.HasValue) url += $"&categoryId={categoryId.Value}";
+        if (isActive.HasValue) url += $"&isActive={isActive.Value}";
+
+        var categories = await api.GetAsync<IReadOnlyCollection<CategoryVm>>("api/owner/catalog/categories");
+        ViewBag.Categories = categories.Data ?? [];
+        ViewBag.Keyword = keyword;
+        ViewBag.CategoryId = categoryId;
+        ViewBag.IsActive = isActive;
+
+        var result = await api.GetAsync<PagedVm<ProductVm>>(url);
         ViewBag.Error = result.Error;
         return View(result.Data?.Items ?? []);
+    }
+
+    public async Task<IActionResult> ProductDetails(Guid id)
+    {
+        var guard = CheckShopOwnerRole(); if (guard != null) return guard;
+        var result = await api.GetAsync<ProductVm>($"api/owner/catalog/products/{id}");
+        if (!result.Success || result.Data is null) return NotFound();
+
+        var reviews = await api.GetAsync<IReadOnlyCollection<ReviewVm>>($"api/catalog/products/{id}/reviews");
+        ViewBag.Reviews = reviews.Data ?? [];
+        return View(result.Data);
     }
 
     [HttpGet]
@@ -67,8 +98,62 @@ public sealed class OwnerCatalogController(GatewayApiClient api) : Controller
         var categories = await api.GetAsync<IReadOnlyCollection<CategoryVm>>("api/owner/catalog/categories");
         ViewBag.Categories = categories.Data ?? [];
         if (!ModelState.IsValid) return View(model);
-        var r = await api.PostAsync<ProductVm>("api/owner/catalog/products", new { model.CategoryId, model.Name, model.Description, model.Price, model.ImageUrl, model.IsActive, variants = Array.Empty<object>() });
+
+        var variantsPayload = model.Variants != null && model.Variants.Count > 0
+            ? model.Variants.Select(v => new { name = v.Name.Trim(), sku = v.Sku.Trim(), additionalPrice = v.AdditionalPrice, isActive = v.IsActive }).Cast<object>().ToArray()
+            : new object[] { new { name = "Mặc định", sku = $"SKU-{DateTime.UtcNow:yyyyMMddHHmmss}-{Random.Shared.Next(100, 999)}", additionalPrice = 0m, isActive = true } };
+
+        var r = await api.PostAsync<ProductVm>("api/owner/catalog/products", new { model.CategoryId, model.Name, model.Description, model.Price, model.ImageUrl, model.IsActive, variants = variantsPayload });
         if (!r.Success) { ModelState.AddModelError(string.Empty, r.Error ?? "Không thể tạo sản phẩm."); return View(model); }
+        TempData["Success"] = "Đã tạo sản phẩm mới.";
+        return RedirectToAction("Products");
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> EditProduct(Guid id)
+    {
+        var guard = CheckShopOwnerRole(); if (guard != null) return guard;
+        var categories = await api.GetAsync<IReadOnlyCollection<CategoryVm>>("api/owner/catalog/categories");
+        ViewBag.Categories = categories.Data ?? [];
+
+        var result = await api.GetAsync<ProductVm>($"api/owner/catalog/products/{id}");
+        if (!result.Success || result.Data is null) return NotFound();
+
+        var model = new ProductFormVm
+        {
+            Id = result.Data.Id,
+            CategoryId = result.Data.CategoryId,
+            Name = result.Data.Name,
+            Description = result.Data.Description,
+            Price = result.Data.Price,
+            ImageUrl = result.Data.ImageUrl,
+            IsActive = result.Data.IsActive,
+            Variants = result.Data.Variants.Select(v => new VariantFormVm
+            {
+                Name = v.Name,
+                Sku = v.Sku,
+                AdditionalPrice = v.AdditionalPrice,
+                IsActive = v.IsActive
+            }).ToList()
+        };
+        return View(model);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> EditProduct(Guid id, ProductFormVm model)
+    {
+        var guard = CheckShopOwnerRole(); if (guard != null) return guard;
+        var categories = await api.GetAsync<IReadOnlyCollection<CategoryVm>>("api/owner/catalog/categories");
+        ViewBag.Categories = categories.Data ?? [];
+        if (!ModelState.IsValid) return View(model);
+
+        var variantsPayload = model.Variants != null && model.Variants.Count > 0
+            ? model.Variants.Select(v => new { name = v.Name.Trim(), sku = v.Sku.Trim(), additionalPrice = v.AdditionalPrice, isActive = v.IsActive }).Cast<object>().ToArray()
+            : new object[] { new { name = "Mặc định", sku = $"SKU-{DateTime.UtcNow:yyyyMMddHHmmss}-{Random.Shared.Next(100, 999)}", additionalPrice = 0m, isActive = true } };
+
+        var r = await api.PutAsync<ProductVm>($"api/owner/catalog/products/{id}", new { model.CategoryId, model.Name, model.Description, model.Price, model.ImageUrl, model.IsActive, variants = variantsPayload });
+        if (!r.Success) { ModelState.AddModelError(string.Empty, r.Error ?? "Không thể cập nhật sản phẩm."); return View(model); }
+        TempData["Success"] = "Đã cập nhật sản phẩm.";
         return RedirectToAction("Products");
     }
 
@@ -76,7 +161,8 @@ public sealed class OwnerCatalogController(GatewayApiClient api) : Controller
     public async Task<IActionResult> DeleteProduct(Guid id)
     {
         var guard = CheckShopOwnerRole(); if (guard != null) return guard;
-        await api.DeleteAsync<object>($"api/owner/catalog/products/{id}");
+        var r = await api.DeleteAsync<object>($"api/owner/catalog/products/{id}");
+        TempData[r.Success ? "Success" : "Error"] = r.Success ? "Đã ngừng bán sản phẩm." : r.Error;
         return RedirectToAction("Products");
     }
 }

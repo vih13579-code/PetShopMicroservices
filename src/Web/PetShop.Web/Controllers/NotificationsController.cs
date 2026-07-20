@@ -21,4 +21,13 @@ public sealed class NotificationsController(GatewayApiClient api) : Controller
         await api.PatchAsync<object>($"api/notifications/{id}/read");
         return RedirectToAction("Index");
     }
+
+    [HttpPost]
+    public async Task<IActionResult> ReadAll()
+    {
+        if (!api.IsLoggedIn) return RedirectToAction("Login", "Account");
+        var r = await api.PatchAsync<object>("api/notifications/read-all");
+        TempData[r.Success ? "Success" : "Error"] = r.Success ? "Đã đánh dấu tất cả thông báo là đã đọc." : r.Error;
+        return RedirectToAction("Index");
+    }
 }

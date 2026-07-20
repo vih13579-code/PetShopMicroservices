@@ -78,8 +78,35 @@ public sealed class PaymentsController(
         payment.PaidAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         await ordersClient.SetPaymentStatusAsync(payment.OrderId, PaymentStatus.Paid.ToString());
+        var order = await ordersClient.GetAsync(payment.OrderId);
+        var orderRef = order?.OrderCode ?? payment.OrderId.ToString()[..8];
         await notificationClient.SendAsync(payment.CustomerId, "Thanh toán thành công",
-            $"Đơn hàng {payment.OrderId} đã được thanh toán.", "PaymentSucceeded");
+            $"Đơn hàng #{orderRef} đã được thanh toán.", "PaymentSucceeded");
+        return Ok(Map(payment));
+    }
+
+    [HttpPost("{id:guid}/confirm-cod")]
+    [Authorize(Roles = "ShopOwner")]
+    public async Task<ActionResult<PaymentResponse>> ConfirmCod(Guid id)
+    {
+        var payment = await db.Payments.SingleOrDefaultAsync(x => x.Id == id);
+        if (payment is null) return NotFound(new { message = "Không tìm thấy thanh toán." });
+        if (payment.Method != PaymentMethod.COD)
+            return BadRequest(new { message = "Chỉ áp dụng cho thanh toán COD." });
+        if (payment.Status == PaymentStatus.Paid) return Ok(Map(payment));
+
+        var order = await ordersClient.GetAsync(payment.OrderId);
+        var ownedShop = await shopClient.GetByOwnerAsync(User.GetRequiredUserId());
+        if (order is null || ownedShop is null || ownedShop.Id != order.ShopId)
+            return Forbid();
+
+        payment.Status = PaymentStatus.Paid;
+        payment.PaidAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        await ordersClient.SetPaymentStatusAsync(payment.OrderId, PaymentStatus.Paid.ToString());
+        var orderRef = order.OrderCode ?? payment.OrderId.ToString()[..8];
+        await notificationClient.SendAsync(payment.CustomerId, "Xác nhận tiền mặt COD",
+            $"Shop đã xác nhận nhận tiền mặt cho đơn #{orderRef}.", "CodPaymentConfirmed");
         return Ok(Map(payment));
     }
 
@@ -103,20 +130,24 @@ public sealed class PaymentsController(
     public async Task<ActionResult<PaymentResponse>> Refund(Guid id)
     {
         var payment = await db.Payments.SingleOrDefaultAsync(x => x.Id == id);
-        if (payment is null) return NotFound();
+        if (payment is null) return NotFound(new { message = "Không tìm thấy thông tin thanh toán." });
         if (!User.IsInRole("Admin"))
         {
             var order = await ordersClient.GetAsync(payment.OrderId);
+            if (order is null) return NotFound(new { message = "Không tìm thấy đơn hàng liên kết." });
+
             var ownedShop = await shopClient.GetByOwnerAsync(User.GetRequiredUserId());
-            if (order is null || ownedShop?.Id != order.ShopId) return Forbid();
+            if (ownedShop is null || ownedShop.Id != order.ShopId) return Forbid();
         }
         if (payment.Status != PaymentStatus.Paid) return Conflict(new { message = "Chỉ thanh toán Paid mới được hoàn tiền." });
         payment.Status = PaymentStatus.Refunded;
         payment.RefundedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         await ordersClient.SetPaymentStatusAsync(payment.OrderId, PaymentStatus.Refunded.ToString());
+        var orderInfo = await ordersClient.GetAsync(payment.OrderId);
+        var orderRef = orderInfo?.OrderCode ?? payment.OrderId.ToString()[..8];
         await notificationClient.SendAsync(payment.CustomerId, "Đã hoàn tiền",
-            $"Thanh toán của đơn {payment.OrderId} đã được hoàn tiền.", "PaymentRefunded");
+            $"Thanh toán của đơn #{orderRef} đã được hoàn tiền.", "PaymentRefunded");
         return Ok(Map(payment));
     }
 

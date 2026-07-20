@@ -20,6 +20,9 @@ public sealed class InventoryController(GatewayApiClient api) : Controller
     public async Task<IActionResult> Index()
     {
         var guard = CheckShopOwnerRole(); if (guard != null) return guard;
+        var products = await api.GetAsync<PagedVm<ProductVm>>("api/owner/catalog/products?page=1&pageSize=100");
+        ViewBag.Products = products.Data?.Items ?? [];
+
         var result = await api.GetAsync<IReadOnlyCollection<InventoryVm>>("api/inventory/owner");
         ViewBag.Error = result.Error;
         return View(result.Data ?? []);
@@ -30,7 +33,7 @@ public sealed class InventoryController(GatewayApiClient api) : Controller
     {
         var guard = CheckShopOwnerRole(); if (guard != null) return guard;
         var r = await api.PutAsync<InventoryVm>("api/inventory/owner/set", new { productId, quantity, reason });
-        TempData[r.Success ? "Success" : "Error"] = r.Success ? "Đã cập nhật kho." : r.Error;
+        TempData[r.Success ? "Success" : "Error"] = r.Success ? "Đã cập nhật số lượng tồn kho thành công." : r.Error;
         return RedirectToAction("Index");
     }
 }

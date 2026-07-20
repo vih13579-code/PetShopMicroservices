@@ -61,6 +61,14 @@ public sealed class ShopRequestFormVm
     public string? TaxCode { get; set; }
 }
 public sealed class CategoryFormVm { [Required] public string Name { get; set; } = string.Empty; public string? Description { get; set; } }
+public sealed class VariantFormVm
+{
+    [Required] public string Name { get; set; } = "Mặc định";
+    [Required] public string Sku { get; set; } = string.Empty;
+    public decimal AdditionalPrice { get; set; } = 0;
+    public bool IsActive { get; set; } = true;
+}
+
 public sealed class ProductFormVm
 {
     public Guid Id { get; set; }
@@ -70,6 +78,7 @@ public sealed class ProductFormVm
     [Range(0.01, double.MaxValue)] public decimal Price { get; set; }
     public string? ImageUrl { get; set; }
     public bool IsActive { get; set; } = true;
+    public List<VariantFormVm> Variants { get; set; } = new();
 }
 public sealed class CheckoutVm
 {
@@ -95,4 +104,30 @@ public sealed class ShopEditVm
     public string? TaxCode { get; set; }
 }
 public sealed class StaffFormVm : RegisterVm { }
-public sealed record RevenueReportVm(decimal TotalRevenue, int TotalOrders, int CompletedOrders, int CancelledOrders, DateTime? FromDate, DateTime? ToDate);
+public sealed class ProfileFormVm
+{
+    public Guid Id { get; set; }
+    public string Email { get; set; } = string.Empty;
+    [Required] public string FullName { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string? Address { get; set; }
+    public IReadOnlyCollection<string> Roles { get; set; } = Array.Empty<string>();
+    public DateTime CreatedAt { get; set; }
+}
+public sealed record DailyRevenueVm(DateTime Date, int Orders, decimal Revenue);
+public sealed record RevenueReportVm(
+    decimal Revenue,
+    int TotalOrders,
+    int Completed,
+    int Cancelled,
+    DateTime? FromDate = null,
+    DateTime? ToDate = null,
+    IReadOnlyCollection<DailyRevenueVm>? ByDay = null)
+{
+    public decimal TotalRevenue => Revenue;
+    public int CompletedOrders => Completed;
+    public int CancelledOrders => Cancelled;
+}
+
+public sealed record ReviewVm(Guid Id, Guid ProductId, Guid UserId, int Rating, string? Comment, DateTime CreatedAt, DateTime? UpdatedAt);
+

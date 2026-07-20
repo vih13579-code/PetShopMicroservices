@@ -46,6 +46,46 @@ public sealed class GatewayApiClient(HttpClient httpClient, IHttpContextAccessor
 
     private async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string url, object? body)
     {
+        var result = await SendInternalAsync<T>(method, url, body);
+        if (result.StatusCode == 401 && !string.IsNullOrWhiteSpace(accessor.HttpContext?.Session.GetString("RefreshToken")))
+        {
+            var refreshed = await TryRefreshTokenAsync();
+            if (refreshed)
+            {
+                return await SendInternalAsync<T>(method, url, body);
+            }
+        }
+        return result;
+    }
+
+    private async Task<bool> TryRefreshTokenAsync()
+    {
+        var refreshToken = accessor.HttpContext?.Session.GetString("RefreshToken");
+        if (string.IsNullOrWhiteSpace(refreshToken)) return false;
+
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Post, "api/auth/refresh");
+            req.Content = JsonContent.Create(new { refreshToken }, options: JsonOptions);
+            using var resp = await httpClient.SendAsync(req);
+            if (!resp.IsSuccessStatusCode) { ClearToken(); return false; }
+
+            var text = await resp.Content.ReadAsStringAsync();
+            var token = JsonSerializer.Deserialize<TokenVm>(text, JsonOptions);
+            if (token is null) return false;
+
+            SetToken(token.AccessToken, token.RefreshToken, JsonSerializer.Serialize(token.User, JsonOptions));
+            return true;
+        }
+        catch
+        {
+            ClearToken();
+            return false;
+        }
+    }
+
+    private async Task<ApiResult<T>> SendInternalAsync<T>(HttpMethod method, string url, object? body)
+    {
         using var request = new HttpRequestMessage(method, url);
         var token = accessor.HttpContext?.Session.GetString("AccessToken");
         if (!string.IsNullOrWhiteSpace(token)) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -69,6 +109,15 @@ public sealed class GatewayApiClient(HttpClient httpClient, IHttpContextAccessor
             else if (doc.RootElement.TryGetProperty("detail", out var detail)) error = detail.GetString() ?? text;
         }
         catch { /* giữ nội dung lỗi gốc */ }
+
+        if (string.IsNullOrWhiteSpace(error) || error == text)
+        {
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                error = "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.";
+            else if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                error = "Bạn không có quyền thực hiện thao tác này.";
+        }
+
         return new ApiResult<T>(false, default, error, (int)response.StatusCode);
     }
 }

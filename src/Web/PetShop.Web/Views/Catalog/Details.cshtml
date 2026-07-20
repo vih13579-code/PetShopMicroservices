@@ -1,2 +1,202 @@
 @model ProductVm
-@{ViewData["Title"]=Model.Name;}<h2>@Model.Name</h2><p>Danh mục: @Model.CategoryName</p><p>@Model.Description</p><h4>@Model.Price.ToString("N0") đ</h4><form asp-controller="Cart" asp-action="Add" method="post"><input type="hidden" name="productId" value="@Model.Id"/><select name="variantId" class="form-select mb-2"><option value="">Mặc định</option>@foreach(var v in Model.Variants.Where(x=>x.IsActive)){<option value="@v.Id">@v.Name (+@v.AdditionalPrice.ToString("N0") đ)</option>}</select><input type="number" name="quantity" min="1" value="1" class="form-control mb-2"/><button class="btn btn-success">Thêm vào giỏ</button></form>
+@inject PetShop.Web.Services.GatewayApiClient Api
+@{
+    ViewData["Title"] = Model.Name;
+    var reviews = (IReadOnlyCollection<ReviewVm>)(ViewBag.Reviews ?? Array.Empty<ReviewVm>());
+    var avgRating = reviews.Any() ? reviews.Average(x => x.Rating) : 0;
+    var isStaffOrAdminOnly = Api.IsLoggedIn && !Api.HasAnyRole("Customer", "ShopOwner");
+    var inventory = ViewBag.Inventory as InventoryVm;
+    var isOutOfStock = inventory != null && inventory.AvailableQuantity <= 0;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại danh sách sản phẩm
+    </a>
+</div>
+
+@if (TempData["Success"] is string successMsg)
+{
+    <div class="alert alert-success shadow-sm mb-4"><i class="bi bi-check-circle me-1"></i>@successMsg</div>
+}
+@if (TempData["Error"] is string errorMsg)
+{
+    <div class="alert alert-warning shadow-sm mb-4"><i class="bi bi-exclamation-triangle me-1"></i>@errorMsg</div>
+}
+
+<div class="row g-4 mb-5">
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0 p-3 text-center">
+            @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
+            {
+                <img src="@Model.ImageUrl" class="img-fluid rounded" style="max-height: 380px; object-fit: cover;" />
+            }
+            else
+            {
+                <div class="bg-light p-5 rounded text-muted">
+                    <i class="bi bi-image fs-1"></i>
+                    <p class="mb-0">Chưa có hình ảnh sản phẩm</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-primary bg-opacity-10 text-primary">@Model.CategoryName</span>
+                    @if (isOutOfStock)
+                    {
+                        <span class="badge bg-danger shadow-sm"><i class="bi bi-x-circle me-1"></i>Hết hàng</span>
+                    }
+                    else if (inventory != null)
+                    {
+                        <span class="badge bg-success bg-opacity-10 text-success"><i class="bi bi-box-seam me-1"></i>Tồn kho: @inventory.AvailableQuantity</span>
+                    }
+                </div>
+
+                <h2 class="fw-bold text-dark mb-2">@Model.Name</h2>
+
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="text-warning">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            <i class="bi @(i <= Math.Round(avgRating) ? "bi-star-fill" : "bi-star")"></i>
+                        }
+                    </div>
+                    <span class="fw-semibold">@avgRating.ToString("0.0") / 5</span>
+                    <span class="text-muted">(@reviews.Count đánh giá)</span>
+                </div>
+
+                <h2 class="fw-bold text-danger mb-4">@Model.Price.ToString("N0") VNĐ</h2>
+
+                <p class="text-muted mb-4">@(string.IsNullOrWhiteSpace(Model.Description) ? "Sản phẩm chất lượng cao, cung cấp chính hãng cho thú cưng của bạn." : Model.Description)</p>
+
+                @if (isStaffOrAdminOnly)
+                {
+                    <div class="alert alert-info border mb-3">
+                        <i class="bi bi-shield-lock me-1"></i> Tài khoản <strong>Staff / Admin</strong> dành cho công việc quản trị hệ thống, không sử dụng chức năng mua hàng.
+                    </div>
+                }
+                else if (isOutOfStock)
+                {
+                    <div class="alert alert-danger mb-3 shadow-sm">
+                        <i class="bi bi-exclamation-octagon me-1"></i> Sản phẩm hiện đang <strong>Hết hàng</strong> trong kho. Vui lòng quay lại sau hoặc chọn sản phẩm khác.
+                    </div>
+                    <button disabled class="btn btn-secondary btn-lg w-100 fw-bold">
+                        <i class="bi bi-slash-circle me-2"></i>Tạm Thời Hết Hàng
+                    </button>
+                }
+                else
+                {
+                    <form asp-controller="Cart" asp-action="Add" method="post" class="bg-light p-3 rounded mb-3">
+                        <input type="hidden" name="productId" value="@Model.Id" />
+
+                        @if (Model.Variants != null && Model.Variants.Any(x => x.IsActive))
+                        {
+                            var activeVariants = Model.Variants.Where(x => x.IsActive).ToList();
+                            if (activeVariants.Count > 1 || (activeVariants.Count == 1 && activeVariants[0].Name != "Mặc định"))
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Chọn phân loại sản phẩm:</label>
+                                    <select name="variantId" class="form-select">
+                                        <option value="">-- Chọn phân loại sản phẩm --</option>
+                                        @foreach (var v in activeVariants)
+                                        {
+                                            <option value="@v.Id">@v.Name @(v.AdditionalPrice > 0 ? $"(+{v.AdditionalPrice:N0} VNĐ)" : "")</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+                        }
+
+                        <div class="row g-2 align-items-center mb-3">
+                            <div class="col-auto">
+                                <label class="form-label fw-semibold mb-0">Số lượng:</label>
+                            </div>
+                            <div class="col-auto" style="width: 120px;">
+                                <input type="number" name="quantity" min="1" max="@(inventory?.AvailableQuantity ?? 99)" value="1" class="form-control text-center" />
+                            </div>
+                            @if (inventory != null)
+                            {
+                                <div class="col-auto">
+                                    <small class="text-muted">(Tối đa: @inventory.AvailableQuantity)</small>
+                                </div>
+                            }
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-lg w-100 fw-bold">
+                            <i class="bi bi-cart-plus me-2"></i>Thêm Vào Giỏ Hàng
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+        <h4 class="fw-bold text-dark mb-0"><i class="bi bi-chat-square-quote text-warning me-2"></i>Đánh giá sản phẩm</h4>
+    </div>
+    <div class="card-body p-4">
+        @if (!isStaffOrAdminOnly)
+        {
+            <div class="bg-light p-3 rounded mb-4 border">
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-pencil-square me-1 text-primary"></i>Viết đánh giá của bạn</h5>
+                <form asp-controller="Catalog" asp-action="AddReview" method="post">
+                    <input type="hidden" name="productId" value="@Model.Id" />
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">Số sao đánh giá</label>
+                            <select name="rating" class="form-select">
+                                <option value="5">⭐⭐⭐⭐⭐ (5 sao - Tuyệt vời)</option>
+                                <option value="4">⭐⭐⭐⭐ (4 sao - Tốt)</option>
+                                <option value="3">⭐⭐⭐ (3 sao - Bình thường)</option>
+                                <option value="2">⭐⭐ (2 sao - Tạm được)</option>
+                                <option value="1">⭐ (1 sao - Kém)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label fw-semibold small">Nhận xét của bạn</label>
+                            <input name="comment" class="form-control" placeholder="Chia sẻ trải nghiệm sử dụng sản phẩm..." />
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="submit" class="btn btn-warning fw-bold text-dark">
+                                <i class="bi bi-send me-1"></i>Gửi đánh giá
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        }
+
+        @if (reviews == null || !reviews.Any())
+        {
+            <div class="text-center py-4 text-muted">Chưa có đánh giá nào cho sản phẩm này.</div>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var r in reviews)
+                {
+                    <div class="col-md-6">
+                        <div class="border p-3 rounded bg-white shadow-sm h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="text-warning">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <i class="bi @(i <= r.Rating ? "bi-star-fill" : "bi-star")"></i>
+                                    }
+                                </div>
+                                <small class="text-muted"><i class="bi bi-clock me-1"></i>@r.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small>
+                            </div>
+                            <p class="mb-0 text-dark">@(string.IsNullOrWhiteSpace(r.Comment) ? "Người dùng không để lại lời nhắn." : r.Comment)</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

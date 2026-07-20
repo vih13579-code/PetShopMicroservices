@@ -25,11 +25,37 @@ public sealed class OwnerOrdersController(GatewayApiClient api) : Controller
         return View(r.Data?.Items ?? []);
     }
 
+    public async Task<IActionResult> Details(Guid id)
+    {
+        var guard = CheckShopOwnerRole(); if (guard != null) return guard;
+        var r = await api.GetAsync<OrderVm>($"api/orders/{id}");
+        if (!r.Success || r.Data is null) return NotFound();
+
+        var paymentRes = await api.GetAsync<PaymentVm>($"api/payments/order/{id}");
+        ViewBag.Payment = paymentRes.Data;
+        return View(r.Data);
+    }
+
     [HttpPost] public Task<IActionResult> Confirm(Guid id) => Move(id, "confirm");
     [HttpPost] public Task<IActionResult> Preparing(Guid id) => Move(id, "preparing");
     [HttpPost] public Task<IActionResult> Shipping(Guid id) => Move(id, "shipping");
     [HttpPost] public Task<IActionResult> Complete(Guid id) => Move(id, "complete");
     [HttpPost] public Task<IActionResult> Cancel(Guid id) => Move(id, "cancel");
+
+    [HttpPost]
+    public async Task<IActionResult> ConfirmCodPayment(Guid orderId)
+    {
+        var guard = CheckShopOwnerRole(); if (guard != null) return guard;
+        var paymentRes = await api.GetAsync<PaymentVm>($"api/payments/order/{orderId}");
+        if (!paymentRes.Success || paymentRes.Data is null)
+        {
+            TempData["Error"] = paymentRes.Error ?? "Không tìm thấy thông tin thanh toán.";
+            return RedirectToAction("Index");
+        }
+        var r = await api.PostAsync<object>($"api/payments/{paymentRes.Data.Id}/confirm-cod");
+        TempData[r.Success ? "Success" : "Error"] = r.Success ? "Đã xác nhận thanh toán COD thành công." : r.Error;
+        return RedirectToAction("Index");
+    }
 
     private async Task<IActionResult> Move(Guid id, string action)
     {

@@ -90,7 +90,8 @@ public sealed class ShopRequestsController(
         var entity = await db.ShopRegistrationRequests.SingleOrDefaultAsync(x => x.Id == id);
         if (entity is null) return NotFound();
         if (entity.Status != ShopRequestStatus.Pending) return Conflict(new { message = "Yêu cầu đã được xử lý." });
-        if (await db.Shops.AnyAsync(x => x.OwnerUserId == entity.UserId)) return Conflict(new { message = "Người dùng đã có Shop." });
+        if (await db.Shops.AnyAsync(x => x.OwnerUserId == entity.UserId && x.Status != ShopStatus.Closed))
+            return Conflict(new { message = "Người dùng đã có Shop đang hoạt động." });
 
         var shop = new Shop
         {

@@ -9,9 +9,9 @@ public sealed class ShopsController(GatewayApiClient api) : Controller
     // Public Action: Danh sách các Shop công khai cho Guest / Customer
     public async Task<IActionResult> Index()
     {
-        var r = await api.GetAsync<PagedVm<ShopVm>>("api/shops?page=1&pageSize=100");
+        var r = await api.GetAsync<IReadOnlyCollection<ShopVm>>("api/shops/public");
         ViewBag.Error = r.Error;
-        return View(r.Data?.Items ?? []);
+        return View(r.Data ?? []);
     }
 
     private IActionResult? CheckStaffOrAdminRole()
@@ -36,11 +36,17 @@ public sealed class ShopsController(GatewayApiClient api) : Controller
         return null;
     }
 
-    public async Task<IActionResult> Manage()
+    public async Task<IActionResult> Manage(string? keyword, string? status)
     {
         var guard = CheckStaffOrAdminRole(); if (guard != null) return guard;
-        var r = await api.GetAsync<PagedVm<ShopVm>>("api/shops?page=1&pageSize=100");
+        var url = "api/shops?page=1&pageSize=100";
+        if (!string.IsNullOrWhiteSpace(keyword)) url += $"&keyword={Uri.EscapeDataString(keyword)}";
+        if (!string.IsNullOrWhiteSpace(status)) url += $"&status={Uri.EscapeDataString(status)}";
+
+        var r = await api.GetAsync<PagedVm<ShopVm>>(url);
         ViewBag.Error = r.Error;
+        ViewBag.Keyword = keyword;
+        ViewBag.Status = status;
         return View(r.Data?.Items ?? []);
     }
 

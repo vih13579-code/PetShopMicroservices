@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace PetShop.Inventory.Api.Domain;
 
-public enum StockTransactionType { Initial, Import, ManualAdjust, Reserve, Commit, Release, Return }
+public enum StockTransactionType { Initial, Import, Export, ManualAdjust, Reserve, Commit, Release, Return }
 
 public sealed class InventoryItem
 {

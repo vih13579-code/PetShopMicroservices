@@ -17,7 +17,8 @@ public sealed class OrdersController(
     OrdersDbContext db,
     InventoryClient inventoryClient,
     ShopClient shopClient,
-    NotificationClient notificationClient) : ControllerBase
+    NotificationClient notificationClient,
+    CatalogClient catalogClient) : ControllerBase
 {
     [HttpPost("checkout")]
     [Authorize(Roles = "Customer,ShopOwner")]
@@ -26,6 +27,22 @@ public sealed class OrdersController(
         var customerId = User.GetRequiredUserId();
         var cart = await db.Carts.Include(x => x.Items).SingleOrDefaultAsync(x => x.CustomerId == customerId);
         if (cart is null || cart.Items.Count == 0) return BadRequest(new { message = "Giỏ hàng đang trống." });
+
+        if (User.IsInRole("ShopOwner"))
+        {
+            var ownedShop = await shopClient.GetByOwnerAsync(customerId);
+            if (ownedShop is not null && cart.Items.Any(x => x.ShopId == ownedShop.Id))
+                return BadRequest(new { message = "Chủ cửa hàng không thể tự đặt hàng từ cửa hàng của chính mình." });
+        }
+
+        // Fresh price & active status check
+        foreach (var item in cart.Items)
+        {
+            var snapshot = await catalogClient.GetProductAsync(item.ProductId, item.VariantId);
+            if (snapshot is null || !snapshot.IsActive)
+                return BadRequest(new { message = $"Sản phẩm '{item.ProductName}' đã bị tạm ngưng hoặc không còn tồn tại." });
+            item.UnitPrice = snapshot.UnitPrice;
+        }
 
         var orders = new List<Order>();
         var reservedOrderIds = new List<Guid>();
@@ -199,7 +216,11 @@ public sealed class OrdersController(
         await db.SaveChangesAsync();
     }
 
-    private static string CreateOrderCode() => $"PS{DateTime.UtcNow:yyyyMMddHHmmss}{Random.Shared.Next(1000, 9999)}";
+    private static string CreateOrderCode()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..6].ToUpper();
+        return $"PS{DateTime.UtcNow:yyyyMMddHHmmss}{suffix}";
+    }
     internal static OrderResponse Map(Order x) => new(x.Id, x.OrderCode, x.CustomerId, x.ShopId,
         x.ReceiverName, x.ReceiverPhone, x.ShippingAddress, x.Note, x.SubTotal, x.ShippingFee,
         x.TotalAmount, x.PaymentMethod, x.PaymentStatus, x.Status, x.CreatedAt,

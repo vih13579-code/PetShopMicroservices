@@ -13,9 +13,20 @@ public sealed class ShopRegistrationController(GatewayApiClient api) : Controlle
         ViewBag.Error = result.Error; return View(result.Data ?? []);
     }
     [HttpGet]
-    public IActionResult Create()
+    public async Task<IActionResult> Create()
     {
         if (!api.IsLoggedIn) return RedirectToAction("Login", "Account");
+        if (api.IsInRole("ShopOwner"))
+        {
+            TempData["Error"] = "Tài khoản của bạn đã sở hữu cửa hàng.";
+            return RedirectToAction("Index");
+        }
+        var existing = await api.GetAsync<IReadOnlyCollection<ShopRequestVm>>("api/shop-requests/mine");
+        if (existing.Data?.Any(x => x.Status == "Pending") == true)
+        {
+            TempData["Error"] = "Bạn đang có yêu cầu mở Shop chờ duyệt. Không thể gửi thêm yêu cầu mới.";
+            return RedirectToAction("Index");
+        }
         return View(new ShopRequestFormVm());
     }
 

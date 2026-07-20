@@ -1,2 +1,95 @@
 @model PagedVm<ProductVm>
-@{ViewData["Title"]="Sản phẩm";}<h2>Sản phẩm</h2><form method="get" class="d-flex mb-3"><input name="keyword" value="@ViewBag.Keyword" class="form-control me-2" placeholder="Tìm kiếm..."/><button class="btn btn-outline-primary">Tìm</button></form>@if(ViewBag.Error!=null){<div class="alert alert-danger">@ViewBag.Error</div>}<div class="row g-3">@foreach(var p in Model.Items){<div class="col-md-4"><div class="card h-100">@if(!string.IsNullOrWhiteSpace(p.ImageUrl)){<img src="@p.ImageUrl" class="card-img-top" style="height:200px;object-fit:cover"/>}<div class="card-body"><h5>@p.Name</h5><p>@p.Price.ToString("N0") đ</p><a class="btn btn-sm btn-primary" asp-action="Details" asp-route-id="@p.Id">Chi tiết</a></div></div></div>}</div>
+@{
+    ViewData["Title"] = "Danh sách Sản phẩm";
+    var shops = (IReadOnlyCollection<ShopVm>)(ViewBag.Shops ?? Array.Empty<ShopVm>());
+    var currentShopId = ViewBag.ShopId as Guid?;
+    var currentMinPrice = ViewBag.MinPrice as decimal?;
+    var currentMaxPrice = ViewBag.MaxPrice as decimal?;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark mb-0">
+        <i class="bi bi-shop-window text-primary me-2"></i>Khám phá Sản phẩm
+    </h2>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-3">
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                    <input name="keyword" value="@ViewBag.Keyword" class="form-control" placeholder="Từ khóa tìm kiếm..." />
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="shopId" class="form-select">
+                    <option value="">-- Tất cả Cửa hàng --</option>
+                    @foreach (var s in shops)
+                    {
+                        <option value="@s.Id" selected="@(currentShopId == s.Id)">@s.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input name="minPrice" value="@currentMinPrice" class="form-control" type="number" placeholder="Giá từ (VNĐ)" />
+            </div>
+            <div class="col-md-2">
+                <input name="maxPrice" value="@currentMaxPrice" class="form-control" type="number" placeholder="Giá đến (VNĐ)" />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100 fw-semibold">
+                    <i class="bi bi-filter me-1"></i>Lọc
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger shadow-sm mb-4">@ViewBag.Error</div>
+}
+
+<div class="row g-4">
+    @if (Model == null || Model.Items == null || !Model.Items.Any())
+    {
+        <div class="col-12">
+            <div class="text-center py-5 bg-white rounded-3 shadow-sm">
+                <i class="bi bi-box-seam fs-1 text-muted"></i>
+                <p class="mt-2 text-muted">Không tìm thấy sản phẩm nào phù hợp với điều kiện tìm kiếm.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        @foreach (var p in Model.Items)
+        {
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 shadow-sm border-0 product-card">
+                    @if (!string.IsNullOrWhiteSpace(p.ImageUrl))
+                    {
+                        <img src="@p.ImageUrl" class="card-img-top" style="height:200px; object-fit:cover;" />
+                    }
+                    else
+                    {
+                        <div class="bg-light text-center py-5 text-muted border-bottom" style="height:200px;">
+                            <i class="bi bi-image fs-1"></i>
+                        </div>
+                    }
+                    <div class="card-body d-flex flex-column">
+                        <span class="badge bg-light text-dark border align-self-start mb-2">@p.CategoryName</span>
+                        <h5 class="card-title fw-bold text-dark text-truncate mb-2" title="@p.Name">@p.Name</h5>
+                        <p class="card-text text-muted small flex-grow-1 text-truncate-2">@(string.IsNullOrWhiteSpace(p.Description) ? "Sản phẩm chính hãng chất lượng cao." : p.Description)</p>
+                        <div class="d-flex align-items-center justify-content-between mt-3 pt-2 border-top">
+                            <span class="fw-bold fs-5 text-danger">@p.Price.ToString("N0") đ</span>
+                            <a class="btn btn-outline-primary btn-sm fw-semibold" asp-action="Details" asp-route-id="@p.Id">
+                                <i class="bi bi-eye me-1"></i>Chi tiết
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
