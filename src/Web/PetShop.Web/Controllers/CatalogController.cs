@@ -6,53 +6,45 @@ namespace PetShop.Web.Controllers;
 
 public sealed class CatalogController(GatewayApiClient api) : Controller
 {
-    public async Task<IActionResult> Index(string? keyword, Guid? shopId, Guid? categoryId, decimal? minPrice, decimal? maxPrice, int page = 1)
+    public async Task<IActionResult> Index(string? keyword, Guid? shopId, Guid? categoryId,
+        decimal? minPrice, decimal? maxPrice, int page = 1)
     {
-        var url = $"api/catalog/products?page={page}&pageSize=20";
+        if (minPrice.HasValue && maxPrice.HasValue && minPrice > maxPrice)
+            ModelState.AddModelError(string.Empty, "Giá thấp nhất không được lớn hơn giá cao nhất.");
+        var url = $"api/catalog/products?page={Math.Max(1, page)}&pageSize=12";
         if (!string.IsNullOrWhiteSpace(keyword)) url += $"&keyword={Uri.EscapeDataString(keyword)}";
         if (shopId.HasValue) url += $"&shopId={shopId}";
         if (categoryId.HasValue) url += $"&categoryId={categoryId}";
-        if (minPrice.HasValue) url += $"&minPrice={minPrice}";
-        if (maxPrice.HasValue) url += $"&maxPrice={maxPrice}";
-
-        var shops = await api.GetAsync<IReadOnlyCollection<ShopVm>>("api/shops/public");
-        ViewBag.Shops = shops.Data ?? [];
-        ViewBag.Keyword = keyword;
-        ViewBag.ShopId = shopId;
-        ViewBag.CategoryId = categoryId;
-        ViewBag.MinPrice = minPrice;
-        ViewBag.MaxPrice = maxPrice;
-
-        var result = await api.GetAsync<PagedVm<ProductVm>>(url);
-        ViewBag.Error = result.Error;
-        return View(result.Data ?? new PagedVm<ProductVm>([], 1, 20, 0, 0));
+        if (minPrice.HasValue) url += $"&minPrice={minPrice.Value}";
+        if (maxPrice.HasValue) url += $"&maxPrice={maxPrice.Value}";
+        var products = await api.GetAsync<PagedVm<ProductVm>>(url);
+        var categories = await api.GetAsync<IReadOnlyCollection<CategoryVm>>("api/catalog/categories");
+        var shops = await api.GetAsync<IReadOnlyCollection<PublicShopVm>>("api/shops/public");
+        ViewBag.Error = products.Error ?? categories.Error ?? shops.Error;
+        return View(new CatalogPageVm(products.Data ?? new([], 1, 12, 0, 0), categories.Data ?? [], shops.Data ?? [],
+            keyword, shopId, categoryId, minPrice, maxPrice));
     }
 
     public async Task<IActionResult> Details(Guid id)
     {
-        var result = await api.GetAsync<ProductVm>($"api/catalog/products/{id}");
-        if (!result.Success || result.Data is null) return NotFound();
-
-        var inventory = await api.GetAsync<InventoryVm>($"api/inventory/availability/{id}");
-        ViewBag.Inventory = inventory.Data;
-
+        var product = await api.GetAsync<ProductVm>($"api/catalog/products/{id}");
+        if (!product.Success || product.Data is null) return NotFound();
         var reviews = await api.GetAsync<IReadOnlyCollection<ReviewVm>>($"api/catalog/products/{id}/reviews");
-        ViewBag.Reviews = reviews.Data ?? [];
-        return View(result.Data);
+        ViewBag.ReviewError = reviews.Error;
+        return View(new ProductDetailsPageVm(product.Data, reviews.Data ?? [], new ReviewFormVm()));
     }
 
-    [HttpPost]
-    public async Task<IActionResult> AddReview(Guid productId, int rating, string? comment)
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateReview(Guid productId, ReviewFormVm reviewForm)
     {
         if (!api.IsLoggedIn) return RedirectToAction("Login", "Account");
-        var r = await api.PostAsync<ReviewVm>($"api/catalog/products/{productId}/reviews", new { rating, comment });
-
-        if (!r.Success && (r.StatusCode == 409 || (r.Error != null && r.Error.Contains("đã đánh giá"))))
+        if (!ModelState.IsValid)
         {
-            r = await api.PutAsync<ReviewVm>($"api/catalog/products/{productId}/reviews/mine", new { rating, comment });
+            TempData["Error"] = ModelState.Values.SelectMany(x => x.Errors).FirstOrDefault()?.ErrorMessage;
+            return RedirectToAction(nameof(Details), new { id = productId });
         }
-
-        TempData[r.Success ? "Success" : "Error"] = r.Success ? "Đã lưu đánh giá sản phẩm thành công!" : r.Error;
-        return RedirectToAction("Details", new { id = productId });
+        var result = await api.PostAsync<ReviewVm>($"api/catalog/products/{productId}/reviews", reviewForm);
+        TempData[result.Success ? "Success" : "Error"] = result.Success ? "Cảm ơn bạn đã đánh giá sản phẩm." : result.Error;
+        return RedirectToAction(nameof(Details), new { id = productId });
     }
 }
