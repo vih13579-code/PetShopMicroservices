@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using PetShop.Web.Models;
 
 namespace PetShop.Web.Services;
 
@@ -26,17 +27,18 @@ public sealed class GatewayApiClient(HttpClient httpClient, IHttpContextAccessor
         "CurrentUser", JsonSerializer.Serialize(user, JsonOptions));
     public string? CurrentUserJson => accessor.HttpContext?.Session.GetString("CurrentUser");
     public bool IsLoggedIn => !string.IsNullOrWhiteSpace(accessor.HttpContext?.Session.GetString("AccessToken"));
-    public UserSession? CurrentUser
+    public UserVm? CurrentUser
     {
         get
         {
             var json = CurrentUserJson;
             if (string.IsNullOrWhiteSpace(json)) return null;
-            try { return JsonSerializer.Deserialize<UserSession>(json, JsonOptions); }
+            try { return JsonSerializer.Deserialize<UserVm>(json, JsonOptions); }
             catch (JsonException) { return null; }
         }
     }
-    public bool IsInRole(string role) => CurrentUser?.Roles.Contains(role, StringComparer.OrdinalIgnoreCase) == true;
+    public bool IsInRole(string role) => CurrentUser?.IsInRole(role) == true;
+    public bool HasAnyRole(params string[] roles) => CurrentUser?.HasAnyRole(roles) == true;
 
     public Task<ApiResult<T>> GetAsync<T>(string url) => SendAsync<T>(HttpMethod.Get, url, null);
     public Task<ApiResult<T>> PostAsync<T>(string url, object? body = null) => SendAsync<T>(HttpMethod.Post, url, body);
@@ -118,5 +120,4 @@ public sealed class GatewayApiClient(HttpClient httpClient, IHttpContextAccessor
     };
 
     private sealed record RefreshTokenResponse(string AccessToken, string RefreshToken, JsonElement User);
-    public sealed record UserSession(Guid Id, string FullName, string Email, IReadOnlyCollection<string> Roles);
 }

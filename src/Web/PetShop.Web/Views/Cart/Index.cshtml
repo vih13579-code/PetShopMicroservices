@@ -1,2 +1,140 @@
 @model CartVm
-@{ViewData["Title"]="Giỏ hàng";}<h2>Giỏ hàng</h2>@if(ViewBag.Error!=null){<div class="alert alert-danger">@ViewBag.Error</div>}<table class="table"><thead><tr><th>Sản phẩm</th><th>Giá</th><th>SL</th><th>Thành tiền</th><th></th></tr></thead><tbody>@foreach(var i in Model.Items){<tr><td>@i.ProductName @i.VariantName</td><td>@i.UnitPrice.ToString("N0")</td><td>@i.Quantity</td><td>@i.LineTotal.ToString("N0")</td><td><form asp-action="Remove" method="post"><input type="hidden" name="itemId" value="@i.Id"/><button class="btn btn-sm btn-danger">Xóa</button></form></td></tr>}</tbody></table><h4>Tổng: @Model.Total.ToString("N0") đ</h4><a class="btn btn-primary" asp-action="Checkout">Thanh toán</a>
+@{
+    ViewData["Title"] = "Giỏ hàng";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark mb-0">
+        <i class="bi bi-cart3 text-success me-2"></i>Giỏ hàng của bạn
+    </h2>
+    @if (Model.Items != null && Model.Items.Any())
+    {
+        <form asp-action="Clear" method="post">
+            <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Bạn có chắc chắn muốn xóa toàn bộ giỏ hàng?');">
+                <i class="bi bi-trash me-1"></i>Xóa toàn bộ giỏ
+            </button>
+        </form>
+    }
+</div>
+
+@if (TempData["Success"] is string successMsg)
+{
+    <div class="alert alert-success shadow-sm mb-4"><i class="bi bi-check-circle me-1"></i>@successMsg</div>
+}
+@if (TempData["Error"] is string errorMsg)
+{
+    <div class="alert alert-danger shadow-sm mb-4"><i class="bi bi-exclamation-triangle me-1"></i>@errorMsg</div>
+}
+@if (ViewBag.Error is string err)
+{
+    <div class="alert alert-danger shadow-sm mb-4">@err</div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Sản phẩm</th>
+                                <th>Đơn giá</th>
+                                <th style="width: 140px;">Số lượng</th>
+                                <th>Thành tiền</th>
+                                <th class="text-end pe-3">Xóa</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Items == null || !Model.Items.Any())
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="bi bi-cart-x fs-1 d-block mb-2"></i>
+                                        Giỏ hàng đang trống. Hãy chọn thêm sản phẩm!
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var i in Model.Items)
+                                {
+                                    <tr>
+                                        <td class="ps-3">
+                                            <div class="d-flex align-items-center gap-2">
+                                                @if (!string.IsNullOrWhiteSpace(i.ImageUrl))
+                                                {
+                                                    <img src="@i.ImageUrl" style="width: 45px; height: 45px; object-fit: cover;" class="rounded border" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="bg-light rounded border d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+                                                        <i class="bi bi-image text-muted"></i>
+                                                    </div>
+                                                }
+                                                <div>
+                                                    <div class="fw-bold text-dark">@i.ProductName</div>
+                                                    @if (!string.IsNullOrWhiteSpace(i.VariantName))
+                                                    {
+                                                        <small class="text-muted">Phân loại: <span class="badge bg-light text-dark border">@i.VariantName</span></small>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>@i.UnitPrice.ToString("N0") VNĐ</td>
+                                        <td>
+                                            <form asp-action="Update" method="post" class="d-flex align-items-center gap-1">
+                                                <input type="hidden" name="itemId" value="@i.Id" />
+                                                <input type="number" name="quantity" min="1" max="99" value="@i.Quantity" class="form-control form-control-sm text-center" />
+                                                <button type="submit" class="btn btn-sm btn-outline-primary" title="Cập nhật">
+                                                    <i class="bi bi-check-lg"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                        <td class="fw-bold text-danger">@i.LineTotal.ToString("N0") VNĐ</td>
+                                        <td class="text-end pe-3">
+                                            <form asp-action="Remove" method="post" class="d-inline">
+                                                <input type="hidden" name="itemId" value="@i.Id" />
+                                                <button type="submit" class="btn btn-sm btn-link text-danger" title="Xóa">
+                                                    <i class="bi bi-trash fs-5"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-0">
+                <h5 class="fw-bold text-dark mb-0"><i class="bi bi-receipt me-2 text-primary"></i>Tóm tắt giỏ hàng</h5>
+            </div>
+            <div class="card-body pt-0">
+                <div class="d-flex justify-content-between mb-3 fs-5">
+                    <span class="text-muted">Tổng tiền hàng:</span>
+                    <strong class="text-danger">@Model.Total.ToString("N0") VNĐ</strong>
+                </div>
+                <div class="alert alert-light border small text-muted mb-4">
+                    <i class="bi bi-info-circle me-1"></i> Đơn hàng chứa sản phẩm từ nhiều Shop sẽ tự động tách thành các đơn riêng theo từng Shop.
+                </div>
+
+                @if (Model.Items != null && Model.Items.Any())
+                {
+                    <a asp-action="Checkout" class="btn btn-success btn-lg w-100 fw-bold">
+                        <i class="bi bi-credit-card me-2"></i>Tiến hành Đặt hàng
+                    </a>
+                }
+                else
+                {
+                    <button class="btn btn-secondary btn-lg w-100 fw-bold" disabled>Giỏ hàng trống</button>
+                }
+            </div>
+        </div>
+    </div>
+</div>

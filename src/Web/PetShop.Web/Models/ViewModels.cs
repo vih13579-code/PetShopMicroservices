@@ -17,7 +17,15 @@ public class RegisterVm
     public string? Address { get; set; }
 }
 public sealed record UserVm(Guid Id, string FullName, string Email, string? Phone, string? Address,
-    bool IsActive, DateTime CreatedAt, IReadOnlyCollection<string> Roles);
+    bool IsActive, DateTime CreatedAt, IReadOnlyCollection<string> Roles)
+{
+    public bool IsInRole(string role) => Roles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
+    public bool HasAnyRole(params string[] roles) => roles.Any(IsInRole);
+    public bool IsAdmin => IsInRole("Admin");
+    public bool IsStaff => IsInRole("Staff");
+    public bool IsShopOwner => IsInRole("ShopOwner");
+    public bool IsCustomer => IsInRole("Customer");
+}
 public sealed record TokenVm(string AccessToken, DateTime AccessTokenExpiresAt, string RefreshToken,
     DateTime RefreshTokenExpiresAt, UserVm User);
 public sealed record PagedVm<T>(IReadOnlyCollection<T> Items, int Page, int PageSize, int TotalItems, int TotalPages);
@@ -142,3 +150,27 @@ public sealed class ShopEditVm
     public string? TaxCode { get; set; }
 }
 public sealed class StaffFormVm : RegisterVm { }
+public sealed class ProfileFormVm
+{
+    public Guid Id { get; set; }
+    public string Email { get; set; } = string.Empty;
+    [Required] public string FullName { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string? Address { get; set; }
+    public IReadOnlyCollection<string> Roles { get; set; } = Array.Empty<string>();
+    public DateTime CreatedAt { get; set; }
+}
+public sealed record DailyRevenueVm(DateTime Date, int Orders, decimal Revenue);
+public sealed record RevenueReportVm(
+    decimal Revenue,
+    int TotalOrders,
+    int Completed,
+    int Cancelled,
+    DateTime? FromDate = null,
+    DateTime? ToDate = null,
+    IReadOnlyCollection<DailyRevenueVm>? ByDay = null)
+{
+    public decimal TotalRevenue => Revenue;
+    public int CompletedOrders => Completed;
+    public int CancelledOrders => Cancelled;
+}

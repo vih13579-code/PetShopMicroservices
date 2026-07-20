@@ -1,0 +1,111 @@
+@model ProductFormVm
+@{
+    ViewData["Title"] = "Chỉnh sửa sản phẩm";
+    var categories = (IReadOnlyCollection<CategoryVm>)(ViewBag.Categories ?? Array.Empty<CategoryVm>());
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark mb-0">
+        <i class="bi bi-pencil-square text-warning me-2"></i>Chỉnh sửa sản phẩm
+    </h2>
+    <a asp-action="Products" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại danh sách
+    </a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form method="post">
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+            <input type="hidden" asp-for="Id" />
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Danh mục</label>
+                    <select asp-for="CategoryId" class="form-select">
+                        @foreach (var c in categories)
+                        {
+                            <option value="@c.Id" selected="@(Model.CategoryId == c.Id)">@c.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Name" class="form-label fw-semibold">Tên sản phẩm</label>
+                    <input asp-for="Name" class="form-control" />
+                </div>
+                <div class="col-12">
+                    <label asp-for="Description" class="form-label fw-semibold">Mô tả chi tiết</label>
+                    <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Price" class="form-label fw-semibold">Giá bán (VNĐ)</label>
+                    <input asp-for="Price" class="form-control" type="number" step="1000" />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="ImageUrl" class="form-label fw-semibold">Hình ảnh (URL)</label>
+                    <input asp-for="ImageUrl" class="form-control" />
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <label class="form-check-label fw-semibold" asp-for="IsActive">Đang kinh doanh & Cho phép bán</label>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-tags text-primary me-2"></i>Chỉnh sửa Phân loại (Variants & SKU)</h5>
+
+            @if (Model.Variants != null && Model.Variants.Count > 0)
+            {
+                @for (int i = 0; i < Model.Variants.Count; i++)
+                {
+                    <div class="row g-3 bg-light p-3 rounded mb-3 border">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Tên phân loại</label>
+                            <input name="Variants[@i].Name" value="@Model.Variants[i].Name" class="form-control" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Mã SKU</label>
+                            <input name="Variants[@i].Sku" value="@Model.Variants[i].Sku" class="form-control" required />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Giá chênh lệch (+/- VNĐ)</label>
+                            <input name="Variants[@i].AdditionalPrice" value="@Model.Variants[i].AdditionalPrice" class="form-control" type="number" />
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end">
+                            <div class="form-check mb-2">
+                                <input type="checkbox" name="Variants[@i].IsActive" value="true" class="form-check-input" @(Model.Variants[i].IsActive ? "checked" : "") />
+                                <input type="hidden" name="Variants[@i].IsActive" value="false" />
+                                <label class="form-check-label small">Bán</label>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="row g-3 bg-light p-3 rounded mb-3">
+                    <div class="col-md-5">
+                        <label class="form-label small fw-semibold">Tên phân loại</label>
+                        <input name="Variants[0].Name" class="form-control" value="Mặc định" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Mã SKU</label>
+                        <input name="Variants[0].Sku" class="form-control" placeholder="VD: SKU-001" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Giá chênh lệch (+/- VNĐ)</label>
+                        <input name="Variants[0].AdditionalPrice" class="form-control" type="number" value="0" />
+                    </div>
+                </div>
+            }
+
+            <button type="submit" class="btn btn-warning fw-bold px-4 text-dark mt-3">
+                <i class="bi bi-save me-1"></i>Lưu thay đổi
+            </button>
+            <a asp-action="Products" class="btn btn-outline-secondary mt-3">Hủy</a>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,130 @@
+@model OrderVm
+@{
+    ViewData["Title"] = "Chi tiết đơn hàng " + Model.OrderCode;
+    var payment = ViewBag.Payment as PaymentVm;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark mb-0">
+        <i class="bi bi-receipt text-primary me-2"></i>Chi tiết đơn hàng #@Model.OrderCode
+    </h2>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại danh sách đơn hàng
+    </a>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 border-0">
+                <h5 class="fw-bold text-dark mb-0"><i class="bi bi-box-seam me-2 text-primary"></i>Danh sách sản phẩm trong đơn</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Sản phẩm</th>
+                                <th>Đơn giá</th>
+                                <th>Số lượng</th>
+                                <th class="text-end pe-3">Thành tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.Items)
+                            {
+                                <tr>
+                                    <td class="ps-3">
+                                        <div class="fw-bold text-dark">@item.ProductName</div>
+                                        @if (!string.IsNullOrWhiteSpace(item.VariantName))
+                                        {
+                                            <small class="text-muted">Phân loại: <span class="badge bg-light text-dark border">@item.VariantName</span></small>
+                                        }
+                                    </td>
+                                    <td>@item.UnitPrice.ToString("N0") VNĐ</td>
+                                    <td>x@item.Quantity</td>
+                                    <td class="text-end pe-3 fw-bold text-danger">@item.LineTotal.ToString("N0") VNĐ</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-light p-3">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Tiền hàng:</span>
+                    <span>@Model.SubTotal.ToString("N0") VNĐ</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Phí vận chuyển:</span>
+                    <span>@Model.ShippingFee.ToString("N0") VNĐ</span>
+                </div>
+                <hr />
+                <div class="d-flex justify-content-between fs-5">
+                    <strong class="text-dark">Tổng tiền đơn hàng:</strong>
+                    <strong class="text-danger">@Model.TotalAmount.ToString("N0") VNĐ</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 border-0">
+                <h5 class="fw-bold text-dark mb-0"><i class="bi bi-person me-2 text-info"></i>Thông tin Giao hàng & Người nhận</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 text-muted">Người nhận:</dt>
+                    <dd class="col-sm-8 fw-bold text-dark">@Model.ReceiverName</dd>
+
+                    <dt class="col-sm-4 text-muted">Số điện thoại:</dt>
+                    <dd class="col-sm-8"><i class="bi bi-telephone me-1"></i>@Model.ReceiverPhone</dd>
+
+                    <dt class="col-sm-4 text-muted">Địa chỉ nhận:</dt>
+                    <dd class="col-sm-8"><i class="bi bi-geo-alt me-1"></i>@Model.ShippingAddress</dd>
+
+                    <dt class="col-sm-4 text-muted">Ghi chú:</dt>
+                    <dd class="col-sm-8">@(string.IsNullOrWhiteSpace(Model.Note) ? "Không có ghi chú" : Model.Note)</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-0">
+                <h5 class="fw-bold text-dark mb-0"><i class="bi bi-credit-card me-2 text-success"></i>Trạng thái & Thanh toán</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <span class="text-muted d-block mb-1">Trạng thái đơn hàng:</span>
+                    <span class="badge fs-6 @(Model.Status == "Completed" ? "bg-success" : Model.Status == "Cancelled" ? "bg-danger" : "bg-primary")">
+                        @Model.Status
+                    </span>
+                </div>
+
+                <div class="mb-3">
+                    <span class="text-muted d-block mb-1">Phương thức thanh toán:</span>
+                    <strong>@Model.PaymentMethod</strong>
+                </div>
+
+                <div class="mb-3">
+                    <span class="text-muted d-block mb-1">Trạng thái thanh toán:</span>
+                    <span class="badge fs-6 @(Model.PaymentStatus == "Paid" ? "bg-success" : "bg-warning text-dark")">
+                        @Model.PaymentStatus
+                    </span>
+                </div>
+
+                @if (Model.PaymentMethod == "COD" && Model.PaymentStatus == "CodPending" && Model.Status != "Cancelled")
+                {
+                    <hr />
+                    <form asp-action="ConfirmCodPayment" method="post">
+                        <input type="hidden" name="orderId" value="@Model.Id" />
+                        <button type="submit" class="btn btn-warning fw-bold text-dark w-100">
+                            <i class="bi bi-cash me-1"></i>Xác nhận đã nhận tiền mặt COD
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+</div>

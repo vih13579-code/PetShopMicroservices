@@ -1,0 +1,57 @@
+@model IReadOnlyCollection<ShopVm>
+@{
+    ViewData["Title"] = "Danh sách Cửa hàng";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark mb-0"><i class="bi bi-houses me-2 text-primary"></i>Danh sách Cửa hàng</h2>
+</div>
+
+@if (ViewBag.Error is string err && !string.IsNullOrEmpty(err))
+{
+    <div class="alert alert-danger shadow-sm">@err</div>
+}
+
+<div class="row g-4">
+    @if (Model == null || !Model.Any())
+    {
+        <div class="col-12">
+            <div class="text-center py-5 bg-white rounded-3 shadow-sm">
+                <i class="bi bi-shop fs-1 text-muted"></i>
+                <p class="mt-2 text-muted">Chưa có cửa hàng nào được niêm yết.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        @foreach (var shop in Model)
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-3 me-3">
+                                <i class="bi bi-shop fs-3"></i>
+                            </div>
+                            <div>
+                                <h5 class="card-title fw-bold mb-1">@shop.Name</h5>
+                                <span class="badge @(shop.Status == "Active" ? "bg-success" : "bg-secondary")">@shop.Status</span>
+                            </div>
+                        </div>
+                        <p class="card-text text-muted small mb-3">@(string.IsNullOrWhiteSpace(shop.Description) ? "Chưa có mô tả cửa hàng." : shop.Description)</p>
+                        <div class="border-top pt-2 small text-muted">
+                            <div><i class="bi bi-geo-alt me-1"></i>@shop.Address</div>
+                            <div><i class="bi bi-telephone me-1"></i>@shop.Phone</div>
+                            <div><i class="bi bi-envelope me-1"></i>@shop.Email</div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white border-0 pt-0 pb-3">
+                        <a asp-controller="Catalog" asp-action="Index" asp-route-shopId="@shop.Id" class="btn btn-outline-primary btn-sm w-100">
+                            <i class="bi bi-box-seam me-1"></i>Xem sản phẩm Shop
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

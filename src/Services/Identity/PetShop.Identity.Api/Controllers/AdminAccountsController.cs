@@ -6,6 +6,7 @@ using PetShop.Contracts;
 using PetShop.Identity.Api.Contracts;
 using PetShop.Identity.Api.Domain;
 using PetShop.Identity.Api.Infrastructure;
+using PetShop.ServiceDefaults;
 
 namespace PetShop.Identity.Api.Controllers;
 
@@ -87,6 +88,9 @@ public sealed class AdminAccountsController(IdentityDbContext db) : ControllerBa
 
     private async Task<IActionResult> SetActive(Guid id, bool active)
     {
+        if (!active && id == User.GetRequiredUserId())
+            return BadRequest(new { message = "Không thể tự khóa tài khoản của chính mình." });
+
         var user = await db.Users.SingleOrDefaultAsync(x => x.Id == id);
         if (user is null) return NotFound();
         user.IsActive = active;

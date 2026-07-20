@@ -1,2 +1,120 @@
 @model IReadOnlyCollection<UserVm>
-@{ViewData["Title"]="Tài khoản";}<h2>Admin - Tài khoản</h2><a class="btn btn-success mb-3" asp-action="CreateStaff">Tạo Staff</a><form method="get" class="d-flex mb-3"><input name="keyword" value="@ViewBag.Keyword" class="form-control me-2"/><button class="btn btn-primary">Tìm</button></form>@if(ViewBag.Error!=null){<div class="alert alert-danger">@ViewBag.Error</div>}<table class="table"><thead><tr><th>Tên</th><th>Email</th><th>Role</th><th>Trạng thái</th><th></th></tr></thead><tbody>@foreach(var u in Model){<tr><td>@u.FullName</td><td>@u.Email</td><td>@string.Join(",",u.Roles)</td><td>@(u.IsActive?"Active":"Locked")</td><td><form method="post" asp-action="@(u.IsActive?"Lock":"Unlock")"><input type="hidden" name="id" value="@u.Id"/><button class="btn btn-sm @(u.IsActive?"btn-danger":"btn-success")">@(u.IsActive?"Khóa":"Mở")</button></form></td></tr>}</tbody></table>
+@{
+    ViewData["Title"] = "Quản lý Tài khoản";
+    var currentRole = ViewBag.Role as string;
+    var currentIsActive = ViewBag.IsActive as bool?;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark mb-0">
+        <i class="bi bi-people text-primary me-2"></i>Quản lý Tài khoản (Admin)
+    </h2>
+    <a class="btn btn-success fw-semibold" asp-action="CreateStaff">
+        <i class="bi bi-person-plus me-1"></i>Tạo tài khoản Staff
+    </a>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                    <input name="keyword" value="@ViewBag.Keyword" class="form-control" placeholder="Tìm theo tên hoặc email..." />
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="role" class="form-select">
+                    <option value="">-- Tất cả Vai trò --</option>
+                    <option value="Customer" selected="@(currentRole == "Customer")">Customer</option>
+                    <option value="ShopOwner" selected="@(currentRole == "ShopOwner")">ShopOwner</option>
+                    <option value="Staff" selected="@(currentRole == "Staff")">Staff</option>
+                    <option value="Admin" selected="@(currentRole == "Admin")">Admin</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="isActive" class="form-select">
+                    <option value="">-- Tất cả Trạng thái --</option>
+                    <option value="true" selected="@(currentIsActive == true)">Active (Đang hoạt động)</option>
+                    <option value="false" selected="@(currentIsActive == false)">Locked (Đã bị khóa)</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100 fw-semibold">
+                    <i class="bi bi-filter me-1"></i>Lọc
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger shadow-sm mb-4">@ViewBag.Error</div>
+}
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Họ và tên</th>
+                        <th>Email</th>
+                        <th>Vai trò</th>
+                        <th>Trạng thái</th>
+                        <th>Ngày tạo</th>
+                        <th class="text-end pe-3">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">Không tìm thấy tài khoản nào.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var u in Model)
+                        {
+                            <tr>
+                                <td class="ps-3 fw-semibold">@u.FullName</td>
+                                <td>@u.Email</td>
+                                <td>
+                                    @foreach (var r in u.Roles)
+                                    {
+                                        <span class="badge bg-secondary me-1">@r</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge @(u.IsActive ? "bg-success" : "bg-danger")">
+                                        @(u.IsActive ? "Active" : "Locked")
+                                    </span>
+                                </td>
+                                <td class="small text-muted">@u.CreatedAt.ToString("dd/MM/yyyy")</td>
+                                <td class="text-end pe-3">
+                                    <div class="btn-group btn-group-sm">
+                                        <a asp-action="Details" asp-route-id="@u.Id" class="btn btn-outline-info" title="Xem chi tiết">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a asp-action="Edit" asp-route-id="@u.Id" class="btn btn-outline-warning" title="Chỉnh sửa">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="post" asp-action="@(u.IsActive ? "Lock" : "Unlock")" class="d-inline">
+                                            <input type="hidden" name="id" value="@u.Id" />
+                                            <button type="submit" class="btn @(u.IsActive ? "btn-outline-danger" : "btn-outline-success")"
+                                                    title="@(u.IsActive ? "Khóa" : "Mở khóa")">
+                                                <i class="bi @(u.IsActive ? "bi-lock" : "bi-unlock")"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

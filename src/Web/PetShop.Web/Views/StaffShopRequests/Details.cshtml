@@ -1,0 +1,120 @@
+@model ShopRequestVm
+@{
+    ViewData["Title"] = "Chi tiết yêu cầu mở Shop";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark mb-0">
+        <i class="bi bi-file-earmark-text text-info me-2"></i>Chi tiết yêu cầu đăng ký mở Shop
+    </h2>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại danh sách
+    </a>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="fw-bold text-primary mb-0">@Model.ShopName</h4>
+            <span class="badge fs-6 @(Model.Status == "Pending" ? "bg-warning text-dark" : Model.Status == "Approved" ? "bg-success" : "bg-danger")">
+                Trạng thái: @Model.Status
+            </span>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.RejectionReason))
+        {
+            <div class="alert alert-danger mb-4">
+                <strong><i class="bi bi-exclamation-triangle me-1"></i>Lý do từ chối:</strong> @Model.RejectionReason
+            </div>
+        }
+
+        <hr class="my-4" />
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-person me-2 text-secondary"></i>Thông tin Chủ Shop</h5>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 text-muted">Họ và tên:</dt>
+                    <dd class="col-sm-8 fw-semibold">@Model.OwnerName</dd>
+
+                    <dt class="col-sm-4 text-muted">Email liên hệ:</dt>
+                    <dd class="col-sm-8">@Model.Email</dd>
+
+                    <dt class="col-sm-4 text-muted">Số điện thoại:</dt>
+                    <dd class="col-sm-8">@Model.Phone</dd>
+
+                    <dt class="col-sm-4 text-muted">User ID:</dt>
+                    <dd class="col-sm-8"><code class="text-dark">@Model.UserId</code></dd>
+                </dl>
+            </div>
+
+            <div class="col-md-6 border-start">
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-shop me-2 text-secondary"></i>Thông tin Đăng ký Shop</h5>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 text-muted">Tên Shop:</dt>
+                    <dd class="col-sm-8 fw-bold text-dark">@Model.ShopName</dd>
+
+                    <dt class="col-sm-4 text-muted">Địa chỉ Shop:</dt>
+                    <dd class="col-sm-8">@Model.Address</dd>
+
+                    <dt class="col-sm-4 text-muted">Mã số thuế:</dt>
+                    <dd class="col-sm-8">@(string.IsNullOrWhiteSpace(Model.TaxCode) ? "Không cung cấp" : Model.TaxCode)</dd>
+
+                    <dt class="col-sm-4 text-muted">Thời gian gửi:</dt>
+                    <dd class="col-sm-8">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</dd>
+
+                    @if (Model.ProcessedAt.HasValue)
+                    {
+                        <dt class="col-sm-4 text-muted">Thời gian xử lý:</dt>
+                        <dd class="col-sm-8">@Model.ProcessedAt.Value.ToString("dd/MM/yyyy HH:mm:ss")</dd>
+                    }
+                </dl>
+            </div>
+
+            <div class="col-12">
+                <h5 class="fw-bold text-dark mb-2"><i class="bi bi-card-text me-2 text-secondary"></i>Mô tả cửa hàng</h5>
+                <div class="bg-light p-3 rounded">
+                    @(string.IsNullOrWhiteSpace(Model.Description) ? "Chưa có mô tả." : Model.Description)
+                </div>
+            </div>
+        </div>
+
+        @if (Model.Status == "Pending")
+        {
+            <hr class="my-4" />
+            <div class="d-flex gap-2 justify-content-end">
+                <form asp-action="Approve" method="post" class="d-inline">
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <button class="btn btn-success fw-bold px-4">
+                        <i class="bi bi-check-circle me-1"></i>Duyệt mở Cửa hàng
+                    </button>
+                </form>
+                <button type="button" class="btn btn-danger fw-bold px-4" data-bs-toggle="modal" data-bs-target="#detailRejectModal">
+                    <i class="bi bi-x-circle me-1"></i>Từ chối yêu cầu
+                </button>
+            </div>
+
+            <div class="modal fade" id="detailRejectModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form asp-action="Reject" method="post">
+                            <div class="modal-header">
+                                <h5 class="modal-title fw-bold">Từ chối yêu cầu mở Shop</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <input type="hidden" name="id" value="@Model.Id" />
+                                <p class="mb-2">Nhập lý do từ chối yêu cầu của <strong>@Model.OwnerName</strong>:</p>
+                                <textarea name="reason" class="form-control" rows="3" required placeholder="Nêu rõ lý do..."></textarea>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                                <button type="submit" class="btn btn-danger">Xác nhận Từ Chối</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
