@@ -77,22 +77,9 @@ public sealed class OwnerProductsController(CatalogDbContext db, ShopClient shop
         var normalizedSkus = request.Variants.Select(x => x.Sku.Trim()).ToArray();
         if (normalizedSkus.Distinct(StringComparer.OrdinalIgnoreCase).Count() != normalizedSkus.Length)
             return BadRequest(new { message = "SKU trong danh sách phân loại không được trùng nhau." });
-
-        // Browsers reindex collection fields after a row is removed. Reconcile an omitted id by SKU so an
-        // existing variant is updated instead of being deleted and recreated with a new identity.
-        foreach (var variantRequest in request.Variants.Where(x => !x.Id.HasValue))
-        {
-            var existingVariant = product.Variants.SingleOrDefault(x =>
-                string.Equals(x.Sku, variantRequest.Sku.Trim(), StringComparison.OrdinalIgnoreCase));
-            if (existingVariant is not null) variantRequest.Id = existingVariant.Id;
-        }
-
         var requestIds = request.Variants.Where(x => x.Id.HasValue).Select(x => x.Id!.Value).ToArray();
         if (requestIds.Distinct().Count() != requestIds.Length || requestIds.Any(variantId => product.Variants.All(x => x.Id != variantId)))
             return BadRequest(new { message = "Phân loại cập nhật không thuộc sản phẩm." });
-        var removedIds = request.RemovedVariantIds.Distinct().ToHashSet();
-        if (removedIds.Overlaps(requestIds) || removedIds.Any(variantId => product.Variants.All(x => x.Id != variantId)))
-            return BadRequest(new { message = "Danh sách phân loại cần xóa không hợp lệ." });
         if (await db.ProductVariants.AnyAsync(x => normalizedSkus.Contains(x.Sku) && x.ProductId != product.Id))
             return Conflict(new { message = "Một hoặc nhiều SKU đã được sử dụng bởi sản phẩm khác." });
 
@@ -100,48 +87,36 @@ public sealed class OwnerProductsController(CatalogDbContext db, ShopClient shop
         var retainedIds = requestIds.ToHashSet();
         var existingById = product.Variants.ToDictionary(x => x.Id);
 
-        try
+        // Release changed SKU values first so swaps and replacements cannot violate the unique index.
+        var changedVariants = request.Variants.Where(x => x.Id.HasValue)
+            .Where(x => !string.Equals(existingById[x.Id!.Value].Sku, x.Sku.Trim(), StringComparison.OrdinalIgnoreCase))
+            .Select(x => existingById[x.Id!.Value]).ToArray();
+        foreach (var variant in changedVariants) variant.Sku = $"__tmp__{Guid.NewGuid():N}";
+        if (changedVariants.Length > 0) await db.SaveChangesAsync();
+
+        var removedVariants = product.Variants.Where(x => !retainedIds.Contains(x.Id)).ToArray();
+        db.ProductVariants.RemoveRange(removedVariants);
+        foreach (var removed in removedVariants) product.Variants.Remove(removed);
+        if (removedVariants.Length > 0) await db.SaveChangesAsync();
+
+        product.CategoryId = category.Id; product.Category = category; product.Name = request.Name.Trim();
+        product.Description = request.Description?.Trim(); product.Price = request.Price;
+        product.ImageUrl = request.ImageUrl?.Trim(); product.IsActive = request.IsActive; product.UpdatedAt = DateTime.UtcNow;
+
+        foreach (var variantRequest in request.Variants)
         {
-            // Release changed SKU values first so swaps and replacements cannot violate the unique index.
-            var changedVariants = request.Variants.Where(x => x.Id.HasValue)
-                .Where(x => !string.Equals(existingById[x.Id!.Value].Sku, x.Sku.Trim(), StringComparison.OrdinalIgnoreCase))
-                .Select(x => existingById[x.Id!.Value]).ToArray();
-            foreach (var variant in changedVariants) variant.Sku = $"__tmp__{Guid.NewGuid():N}";
-            if (changedVariants.Length > 0) await db.SaveChangesAsync();
-
-            var removedVariants = product.Variants.Where(x => removedIds.Contains(x.Id) || !retainedIds.Contains(x.Id)).ToArray();
-            db.ProductVariants.RemoveRange(removedVariants);
-            if (removedVariants.Length > 0) await db.SaveChangesAsync();
-
-            product.CategoryId = category.Id; product.Category = category; product.Name = request.Name.Trim();
-            product.Description = request.Description?.Trim(); product.Price = request.Price;
-            product.ImageUrl = request.ImageUrl?.Trim(); product.IsActive = request.IsActive; product.UpdatedAt = DateTime.UtcNow;
-
-            foreach (var variantRequest in request.Variants)
-            {
-                var variant = variantRequest.Id.HasValue
-                    ? existingById[variantRequest.Id.Value]
-                    : new ProductVariant { ProductId = product.Id };
-                variant.Name = variantRequest.Name.Trim();
-                variant.Sku = variantRequest.Sku.Trim();
-                variant.AdditionalPrice = variantRequest.AdditionalPrice;
-                variant.IsActive = variantRequest.IsActive;
-                if (!variantRequest.Id.HasValue) product.Variants.Add(variant);
-            }
-            await db.SaveChangesAsync();
-            await transaction.CommitAsync();
+            var variant = variantRequest.Id.HasValue
+                ? existingById[variantRequest.Id.Value]
+                : new ProductVariant { ProductId = product.Id };
+            variant.Name = variantRequest.Name.Trim();
+            variant.Sku = variantRequest.Sku.Trim();
+            variant.AdditionalPrice = variantRequest.AdditionalPrice;
+            variant.IsActive = variantRequest.IsActive;
+            if (!variantRequest.Id.HasValue) product.Variants.Add(variant);
         }
-        catch (DbUpdateException)
-        {
-            await transaction.RollbackAsync();
-            return Conflict(new { message = "Không thể lưu phân loại vì SKU đã được sử dụng. Vui lòng nhập SKU khác." });
-        }
-
-        // Reload after deletions so the response cannot contain variants left in the tracked navigation collection.
-        db.ChangeTracker.Clear();
-        var updated = await db.Products.Include(x => x.Category).Include(x => x.Variants)
-            .AsNoTracking().SingleAsync(x => x.Id == product.Id);
-        return Ok(PublicCatalogController.Map(updated));
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return Ok(PublicCatalogController.Map(product));
     }
 
     [HttpDelete("{id:guid}")]
