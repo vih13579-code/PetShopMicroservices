@@ -27,8 +27,9 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
         }
         catch (Exception ex) when (ex.GetType().Name.Contains("DbUpdate"))
         {
-            logger.LogWarning(ex, "Database update exception occurred");
-            await WriteProblemAsync(context, HttpStatusCode.BadRequest, "Dữ liệu không hợp lệ hoặc phát sinh tranh chấp trong hệ thống.");
+            var dbMsg = ex.InnerException?.Message ?? ex.Message;
+            logger.LogWarning(ex, "Database update exception occurred: {Message}", dbMsg);
+            await WriteProblemAsync(context, HttpStatusCode.BadRequest, $"Lỗi CSDL: {dbMsg}");
         }
         catch (Exception ex)
         {

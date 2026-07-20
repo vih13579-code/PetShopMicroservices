@@ -17,7 +17,7 @@ public sealed class InternalInventoryController(InventoryDbContext db, IConfigur
     public async Task<IActionResult> GetAvailability(Guid productId)
     {
         if (!Request.HasValidInternalKey(configuration)) return Unauthorized();
-        var item = await db.InventoryItems.AsNoTracking().SingleOrDefaultAsync(x => x.ProductId == productId);
+        var item = await db.InventoryItems.AsNoTracking().FirstOrDefaultAsync(x => x.ProductId == productId);
         if (item is null) return Ok(new { productId, availableQuantity = 100 });
 
         var activeReserved = await db.StockReservations
@@ -37,7 +37,6 @@ public sealed class InternalInventoryController(InventoryDbContext db, IConfigur
 
         if (await db.StockReservations.AnyAsync(x => x.OrderId == request.OrderId && !x.IsReleased)) return NoContent();
 
-        // Release stale reservations older than 15 minutes that were never committed or explicitly released
         var staleThreshold = DateTime.UtcNow.AddMinutes(-15);
         var staleReservations = await db.StockReservations
             .Where(r => !r.IsReleased && !r.IsCommitted && r.CreatedAt < staleThreshold)
@@ -52,7 +51,9 @@ public sealed class InternalInventoryController(InventoryDbContext db, IConfigur
         await using var tx = await db.Database.BeginTransactionAsync();
         foreach (var requested in request.Items)
         {
-            var item = await db.InventoryItems.SingleOrDefaultAsync(x => x.ProductId == requested.ProductId);
+            var item = await db.InventoryItems.FirstOrDefaultAsync(x => x.ShopId == request.ShopId && x.ProductId == requested.ProductId)
+                       ?? await db.InventoryItems.FirstOrDefaultAsync(x => x.ProductId == requested.ProductId);
+
             if (item is null)
             {
                 item = new InventoryItem
@@ -64,12 +65,7 @@ public sealed class InternalInventoryController(InventoryDbContext db, IConfigur
                 };
                 db.InventoryItems.Add(item);
             }
-            else if (item.ShopId == Guid.Empty || item.ShopId != request.ShopId)
-            {
-                item.ShopId = request.ShopId;
-            }
 
-            // Self-healing: recalculate active reserved quantity from database
             var activeReserved = await db.StockReservations
                 .Where(r => r.ProductId == requested.ProductId && !r.IsReleased && !r.IsCommitted && r.OrderId != request.OrderId)
                 .SumAsync(r => (int?)r.Quantity) ?? 0;
@@ -103,7 +99,7 @@ public sealed class InternalInventoryController(InventoryDbContext db, IConfigur
                 OrderId = request.OrderId,
                 ShopId = request.ShopId,
                 ProductId = requested.ProductId,
-                QuantityChange = 0,
+                QuantityChange = -requested.Quantity,
                 Type = StockTransactionType.Reserve,
                 Reason = $"Giữ {requested.Quantity} sản phẩm cho đơn hàng.",
                 PerformedBy = SystemActorId
@@ -132,7 +128,7 @@ public sealed class InternalInventoryController(InventoryDbContext db, IConfigur
         await using var tx = await db.Database.BeginTransactionAsync();
         foreach (var reservation in reservations)
         {
-            var item = await db.InventoryItems.SingleOrDefaultAsync(x => x.ProductId == reservation.ProductId);
+            var item = await db.InventoryItems.FirstOrDefaultAsync(x => x.ProductId == reservation.ProductId);
             if (item is not null)
             {
                 item.Quantity = Math.Max(0, item.Quantity - reservation.Quantity);
@@ -163,7 +159,7 @@ public sealed class InternalInventoryController(InventoryDbContext db, IConfigur
         var reservations = await db.StockReservations.Where(x => x.OrderId == orderId && !x.IsReleased && !x.IsCommitted).ToListAsync();
         foreach (var reservation in reservations)
         {
-            var item = await db.InventoryItems.SingleOrDefaultAsync(x => x.ProductId == reservation.ProductId);
+            var item = await db.InventoryItems.FirstOrDefaultAsync(x => x.ProductId == reservation.ProductId);
             if (item is not null)
             {
                 item.ReservedQuantity = Math.Max(0, item.ReservedQuantity - reservation.Quantity);
@@ -175,7 +171,7 @@ public sealed class InternalInventoryController(InventoryDbContext db, IConfigur
                 OrderId = orderId,
                 ShopId = reservation.ShopId,
                 ProductId = reservation.ProductId,
-                QuantityChange = 0,
+                QuantityChange = reservation.Quantity,
                 Type = StockTransactionType.Release,
                 Reason = "Hủy giữ hàng.",
                 PerformedBy = SystemActorId
