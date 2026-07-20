@@ -1,0 +1,2 @@
+@model LoginVm
+@{ViewData["Title"]="Đăng nhập";}<h2>Đăng nhập</h2><form method="post" class="col-md-5"><div asp-validation-summary="All" class="text-danger"></div><label asp-for="Email"></label><input asp-for="Email" class="form-control mb-2"/><label asp-for="Password"></label><input asp-for="Password" type="password" class="form-control mb-3"/><button class="btn btn-primary">Đăng nhập</button> <a asp-action="Register">Đăng ký</a></form>

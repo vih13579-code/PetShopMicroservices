@@ -1,0 +1,2 @@
+@model IReadOnlyCollection<NotificationVm>
+@{ViewData["Title"]="Thông báo";}<h2>Thông báo</h2>@if(ViewBag.Error!=null){<div class="alert alert-danger">@ViewBag.Error</div>}@foreach(var n in Model){<div class="card mb-2 @(n.IsRead?"opacity-75":"border-primary")"><div class="card-body"><h5>@n.Title</h5><p>@n.Message</p><small>@n.Type - @n.CreatedAt.ToLocalTime()</small>@if(!n.IsRead){<form asp-action="Read" method="post"><input type="hidden" name="id" value="@n.Id"/><button class="btn btn-sm btn-outline-primary mt-2">Đánh dấu đã đọc</button></form>}</div></div>}

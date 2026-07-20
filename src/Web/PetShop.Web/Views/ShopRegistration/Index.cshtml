@@ -1,0 +1,2 @@
+@model IReadOnlyCollection<ShopRequestVm>
+@{ViewData["Title"]="Yêu cầu mở Shop";}<h2>Yêu cầu mở Shop</h2><a class="btn btn-primary mb-3" asp-action="Create">Gửi yêu cầu</a><table class="table"><thead><tr><th>Shop</th><th>Trạng thái</th><th>Lý do</th><th>Ngày gửi</th></tr></thead><tbody>@foreach(var x in Model){<tr><td>@x.ShopName</td><td>@x.Status</td><td>@x.RejectionReason</td><td>@x.CreatedAt.ToLocalTime()</td></tr>}</tbody></table>

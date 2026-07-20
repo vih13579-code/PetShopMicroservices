@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+	</PropertyGroup>
+
+	<!--
+    Đây là Class Library nhưng có sử dụng HttpContext,
+    WebApplication, IServiceCollection... của ASP.NET Core.
+  -->
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference
+		  Include="Microsoft.AspNetCore.Authentication.JwtBearer"
+		  Version="8.0.26" />
+
+		<PackageReference
+		  Include="Swashbuckle.AspNetCore"
+		  Version="6.6.2" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference
+		  Include="..\PetShop.Contracts\PetShop.Contracts.csproj" />
+	</ItemGroup>
+</Project>

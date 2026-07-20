@@ -1,0 +1,42 @@
+@identity = http://localhost:7001
+@gateway = http://localhost:7000
+@token = PASTE_ACCESS_TOKEN_HERE
+
+### Login Admin
+POST {{gateway}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@petshop.local",
+  "password": "Admin@123"
+}
+
+### Login Customer
+POST {{gateway}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "customer@petshop.local",
+  "password": "Customer@123"
+}
+
+### Public products
+GET {{gateway}}/api/catalog/products?page=1&pageSize=20
+
+### Profile
+GET {{gateway}}/api/profile
+Authorization: Bearer {{token}}
+
+### Create Shop request
+POST {{gateway}}/api/shop-requests
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "shopName": "Happy Pets",
+  "description": "Sản phẩm chăm sóc chó mèo",
+  "phone": "0900000000",
+  "email": "happypets@example.com",
+  "address": "Quận 1, TP.HCM",
+  "taxCode": "PET001"
+}
