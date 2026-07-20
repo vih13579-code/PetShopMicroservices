@@ -1,7 +1,103 @@
 @model IReadOnlyCollection<InventoryVm>
-@{ ViewData["Title"] = "Quản lý tồn kho"; var total=Model.Sum(x=>x.Quantity); var reserved=Model.Sum(x=>x.ReservedQuantity); var available=Model.Sum(x=>x.AvailableQuantity); }
-<div class="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-4"><div><div class="page-kicker">PB35 · Inventory Service</div><h1 class="page-title">Quản lý tồn kho</h1><p class="page-subtitle">Theo dõi lượng hàng có thể bán, hàng đang giữ khi checkout và cập nhật tồn kho thực tế.</p></div><button class="btn btn-brand" data-bs-toggle="collapse" data-bs-target="#stockForm">+ Cập nhật số lượng</button></div>
-@if(ViewBag.Error!=null){<div class="alert alert-danger">@ViewBag.Error</div>}
-<div class="row g-3 mb-4"><div class="col-md-4"><div class="surface stat-card d-flex justify-content-between"><div><div class="stat-label">Tổng trong kho</div><div class="stat-value">@total</div></div><div class="stat-icon">Σ</div></div></div><div class="col-md-4"><div class="surface stat-card d-flex justify-content-between"><div><div class="stat-label">Đang giữ</div><div class="stat-value">@reserved</div></div><div class="stat-icon">⌛</div></div></div><div class="col-md-4"><div class="surface stat-card d-flex justify-content-between"><div><div class="stat-label">Có thể bán</div><div class="stat-value">@available</div></div><div class="stat-icon">✓</div></div></div></div>
-<div class="collapse mb-4" id="stockForm"><form asp-action="Set" method="post" class="surface p-4"><h5 class="fw-bold mb-3">Điều chỉnh tồn kho</h5><div class="row g-3"><div class="col-md-4"><label class="form-label">Mã sản phẩm</label><input name="productId" class="form-control" required placeholder="Nhập Product ID"/></div><div class="col-md-3"><label class="form-label">Số lượng mới</label><input name="quantity" type="number" min="0" class="form-control" required/></div><div class="col-md-3"><label class="form-label">Lý do</label><input name="reason" class="form-control" placeholder="Nhập hàng, kiểm kê..."/></div><div class="col-md-2 d-flex align-items-end"><button class="btn btn-brand w-100">Lưu thay đổi</button></div></div></form></div>
-<div class="surface table-card">@if(!Model.Any()){<div class="empty-state"><div class="empty-icon">▦</div><h5>Chưa có dữ liệu tồn kho</h5><p>Cập nhật số lượng cho sản phẩm đầu tiên của shop.</p></div>}else{<table class="table"><thead><tr><th>Sản phẩm</th><th>Tổng số lượng</th><th>Đang giữ</th><th>Có thể bán</th><th>Mức tồn</th><th>Cập nhật</th></tr></thead><tbody>@foreach(var i in Model){var percent=i.Quantity==0?0:(int)Math.Round(i.AvailableQuantity*100d/i.Quantity);<tr><td><span class="order-code">@i.ProductId.ToString()[..8]</span><div class="small text-muted">@i.ProductId</div></td><td class="money">@i.Quantity</td><td><span class="status-pill status-warning">@i.ReservedQuantity</span></td><td><span class="status-pill @(i.AvailableQuantity>0?"status-success":"status-danger")">@i.AvailableQuantity</span></td><td style="min-width:130px"><div class="progress-track"><span style="width:@percent%"></span></div><small class="text-muted">@percent%</small></td><td class="small text-muted">@i.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td></tr>}</tbody></table>}</div>
+@{
+    ViewData["Title"] = "Quản lý Tồn kho";
+    var products = (IReadOnlyCollection<ProductVm>)(ViewBag.Products ?? Array.Empty<ProductVm>());
+    var productMap = products.ToDictionary(p => p.Id, p => p.Name);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark mb-0">
+        <i class="bi bi-boxes text-primary me-2"></i>Quản lý Tồn kho Cửa hàng
+    </h2>
+    <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại Dashboard
+    </a>
+</div>
+
+@if (TempData["Success"] is string successMsg)
+{
+    <div class="alert alert-success shadow-sm mb-4"><i class="bi bi-check-circle me-1"></i>@successMsg</div>
+}
+@if (TempData["Error"] is string errorMsg)
+{
+    <div class="alert alert-danger shadow-sm mb-4"><i class="bi bi-exclamation-triangle me-1"></i>@errorMsg</div>
+}
+@if (ViewBag.Error is string err)
+{
+    <div class="alert alert-danger shadow-sm mb-4">@err</div>
+}
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 border-0">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-pencil-square me-2 text-warning"></i>Cập nhật số lượng tồn kho</h5>
+    </div>
+    <div class="card-body pt-0">
+        <form asp-action="Set" method="post" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label small fw-semibold">Chọn Sản phẩm</label>
+                <select name="productId" class="form-select" required>
+                    <option value="">-- Chọn sản phẩm cần cập nhật kho --</option>
+                    @foreach (var p in products)
+                    {
+                        <option value="@p.Id">@p.Name (@p.Price.ToString("N0") VNĐ)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Số lượng tồn kho mới</label>
+                <input name="quantity" type="number" min="0" max="99999" class="form-control" required placeholder="Nhập số lượng..." />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Lý do (Tùy chọn)</label>
+                <input name="reason" class="form-control" placeholder="VD: Nhập thêm kho..." />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-warning w-100 fw-bold text-dark">
+                    <i class="bi bi-save me-1"></i>Lưu tồn kho
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Sản phẩm</th>
+                        <th>Mã ProductId</th>
+                        <th>Tổng số lượng</th>
+                        <th>Đang được giữ (Reserved)</th>
+                        <th>Có thể bán (Available)</th>
+                        <th class="text-end pe-3">Cập nhật lần cuối</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">Chưa có dữ liệu kho. Hãy chọn sản phẩm và nhập số lượng ở bảng trên.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var i in Model)
+                        {
+                            var productName = productMap.TryGetValue(i.ProductId, out var name) ? name : "Sản phẩm ID: " + i.ProductId.ToString()[..8];
+                            <tr>
+                                <td class="ps-3 fw-bold text-dark">@productName</td>
+                                <td><code>@i.ProductId.ToString()[..8]</code></td>
+                                <td class="fw-bold fs-6">@i.Quantity</td>
+                                <td><span class="badge bg-warning text-dark">@i.ReservedQuantity</span></td>
+                                <td><span class="badge bg-success fs-6">@i.AvailableQuantity</span></td>
+                                <td class="text-end pe-3 small text-muted">@i.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

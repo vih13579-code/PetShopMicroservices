@@ -1,2 +1,186 @@
 @model UserVm
-@{ViewData["Title"]="Dashboard";}<h2>Dashboard</h2>@if(Model==null){<div class="alert alert-warning">Không đọc được phiên đăng nhập.<a class="list-group-item" asp-controller="OwnerOrders" asp-action="Index">Chủ Shop xử lý đơn hàng</a><a class="list-group-item" asp-controller="Shops" asp-action="Mine">Thông tin Shop của tôi</a><a class="list-group-item" asp-controller="Shops" asp-action="Manage">Admin/Staff quản lý Shop</a></div>}else{<p>Xin chào <strong>@Model.FullName</strong> (@string.Join(", ",Model.Roles))</p><div class="list-group"><a class="list-group-item" asp-controller="ShopRegistration" asp-action="Index">Yêu cầu mở Shop</a><a class="list-group-item" asp-controller="AdminAccounts" asp-action="Index">Admin quản lý tài khoản</a><a class="list-group-item" asp-controller="StaffShopRequests" asp-action="Index">Staff duyệt Shop</a><a class="list-group-item" asp-controller="OwnerCatalog" asp-action="Categories">Chủ Shop quản lý danh mục</a><a class="list-group-item" asp-controller="OwnerCatalog" asp-action="Products">Chủ Shop quản lý sản phẩm</a><a class="list-group-item" asp-controller="Inventory" asp-action="Index">Chủ Shop quản lý tồn kho</a><a class="list-group-item" asp-controller="OwnerOrders" asp-action="Index">Chủ Shop xử lý đơn hàng</a><a class="list-group-item" asp-controller="Shops" asp-action="Mine">Thông tin Shop của tôi</a><a class="list-group-item" asp-controller="Shops" asp-action="Manage">Admin/Staff quản lý Shop</a></div>}
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0 bg-white">
+            <div class="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div>
+                    <h2 class="card-title fw-bold mb-1">
+                        <i class="bi bi-speedometer2 text-primary me-2"></i>Bảng điều khiển (Dashboard)
+                    </h2>
+                    @if (Model != null)
+                    {
+                        <p class="text-muted mb-0">
+                            Xin chào, <strong class="text-dark">@Model.FullName</strong> (@Model.Email)
+                        </p>
+                    }
+                </div>
+                <div>
+                    @if (Model != null)
+                    {
+                        <div class="d-flex gap-2 align-items-center">
+                            <span class="text-muted small">Vai trò của bạn:</span>
+                            @foreach (var role in Model.Roles)
+                            {
+                                string bgClass = role switch
+                                {
+                                    "Admin" => "bg-danger",
+                                    "Staff" => "bg-info text-dark",
+                                    "ShopOwner" => "bg-warning text-dark",
+                                    _ => "bg-success"
+                                };
+                                <span class="badge @bgClass fs-6 px-3 py-2">@role</span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model == null)
+{
+    <div class="alert alert-warning shadow-sm" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>Không đọc được thông tin phiên đăng nhập. Vui lòng <a asp-controller="Account" asp-action="Login" class="alert-link">Đăng nhập lại</a>.
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @* 1. Customer Section *@
+        @if (Model.IsCustomer || (!Model.IsAdmin && !Model.IsStaff && !Model.IsShopOwner))
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm border-0 border-start border-4 border-success">
+                    <div class="card-header bg-white py-3 border-0">
+                        <h5 class="card-title fw-bold text-success mb-0">
+                            <i class="bi bi-person-check me-2"></i>Chức năng Khách hàng
+                        </h5>
+                    </div>
+                    <div class="card-body pt-0">
+                        <div class="list-group list-group-flush">
+                            <a asp-controller="Catalog" asp-action="Index" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2">
+                                <span><i class="bi bi-grid text-primary me-2"></i>Duyệt Sản phẩm</span>
+                                <i class="bi bi-chevron-right text-muted small"></i>
+                            </a>
+                            <a asp-controller="Cart" asp-action="Index" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2">
+                                <span><i class="bi bi-cart text-success me-2"></i>Giỏ hàng của tôi</span>
+                                <i class="bi bi-chevron-right text-muted small"></i>
+                            </a>
+                            <a asp-controller="Orders" asp-action="Index" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2">
+                                <span><i class="bi bi-bag-check text-info me-2"></i>Lịch sử Đơn hàng</span>
+                                <i class="bi bi-chevron-right text-muted small"></i>
+                            </a>
+                            <a asp-controller="ShopRegistration" asp-action="Index" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2">
+                                <span><i class="bi bi-shop-window text-warning me-2"></i>Yêu cầu Đăng ký mở Shop</span>
+                                <i class="bi bi-chevron-right text-muted small"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* 2. Shop Owner Section *@
+        @if (Model.IsShopOwner || Model.IsAdmin)
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm border-0 border-start border-4 border-warning">
+                    <div class="card-header bg-white py-3 border-0">
+                        <h5 class="card-title fw-bold text-dark mb-0">
+                            <i class="bi bi-building-gear text-warning me-2"></i>Kênh Chủ Shop (Shop Owner)
+                        </h5>
+                    </div>
+                    <div class="card-body pt-0">
+                        <div class="list-group list-group-flush">
+                            <a asp-controller="Shops" asp-action="Mine" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2">
+                                <span><i class="bi bi-info-circle text-primary me-2"></i>Thông tin Shop của tôi</span>
+                                <i class="bi bi-chevron-right text-muted small"></i>
+                            </a>
+                            <a asp-controller="OwnerCatalog" asp-action="Categories" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2">
+                                <span><i class="bi bi-tags text-warning me-2"></i>Quản lý Danh mục Shop</span>
+                                <i class="bi bi-chevron-right text-muted small"></i>
+                            </a>
+                            <a asp-controller="OwnerCatalog" asp-action="Products" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2">
+                                <span><i class="bi bi-box-seam text-success me-2"></i>Quản lý Sản phẩm Shop</span>
+                                <i class="bi bi-chevron-right text-muted small"></i>
+                            </a>
+                            <a asp-controller="Inventory" asp-action="Index" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2">
+                                <span><i class="bi bi-boxes text-info me-2"></i>Quản lý Tồn kho</span>
+                                <i class="bi bi-chevron-right text-muted small"></i>
+                            </a>
+                            <a asp-controller="OwnerOrders" asp-action="Index" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2">
+                                <span><i class="bi bi-receipt text-danger me-2"></i>Xử lý Đơn hàng Shop</span>
+                                <i class="bi bi-chevron-right text-muted small"></i>
+                            </a>
+                            <a asp-controller="Reports" asp-action="Shop" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2 fw-semibold text-warning">
+                                <span><i class="bi bi-graph-up-arrow text-warning me-2"></i>Báo cáo Doanh thu Shop</span>
+                                <i class="bi bi-chevron-right text-muted small"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* 3. Staff Section *@
+        @if (Model.IsStaff || Model.IsAdmin)
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm border-0 border-start border-4 border-info">
+                    <div class="card-header bg-white py-3 border-0">
+                        <h5 class="card-title fw-bold text-info mb-0">
+                            <i class="bi bi-person-badge me-2"></i>Nghiệp vụ Staff
+                        </h5>
+                    </div>
+                    <div class="card-body pt-0">
+                        <div class="list-group list-group-flush">
+                            <a asp-controller="StaffShopRequests" asp-action="Index" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2">
+                                <span><i class="bi bi-file-earmark-check text-success me-2"></i>Duyệt Yêu cầu mở Shop</span>
+                                <i class="bi bi-chevron-right text-muted small"></i>
+                            </a>
+                            <a asp-controller="Shops" asp-action="Manage" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2">
+                                <span><i class="bi bi-sliders text-info me-2"></i>Quản lý Danh sách & Trạng thái Shop</span>
+                                <i class="bi bi-chevron-right text-muted small"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* 4. Admin Section *@
+        @if (Model.IsAdmin)
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm border-0 border-start border-4 border-danger">
+                    <div class="card-header bg-white py-3 border-0">
+                        <h5 class="card-title fw-bold text-danger mb-0">
+                            <i class="bi bi-shield-lock me-2"></i>Quản trị Quản trị viên (Admin)
+                        </h5>
+                    </div>
+                    <div class="card-body pt-0">
+                        <div class="list-group list-group-flush">
+                            <a asp-controller="AdminAccounts" asp-action="Index" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2">
+                                <span><i class="bi bi-people text-danger me-2"></i>Quản lý Tài khoản (Tạo Staff / Khóa User)</span>
+                                <i class="bi bi-chevron-right text-muted small"></i>
+                            </a>
+                            <a asp-controller="Shops" asp-action="Manage" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2">
+                                <span><i class="bi bi-shop text-warning me-2"></i>Quản lý & Khóa/Mở Shop toàn hệ thống</span>
+                                <i class="bi bi-chevron-right text-muted small"></i>
+                            </a>
+                            <a asp-controller="Reports" asp-action="Admin" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2 fw-semibold text-danger">
+                                <span><i class="bi bi-pie-chart text-danger me-2"></i>Báo cáo Doanh thu Toàn hệ thống</span>
+                                <i class="bi bi-chevron-right text-muted small"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

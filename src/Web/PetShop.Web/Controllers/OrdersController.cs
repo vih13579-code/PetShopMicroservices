@@ -14,12 +14,14 @@ public sealed class OrdersController(GatewayApiClient api) : Controller
     }
     public async Task<IActionResult> Details(Guid id)
     {
+        if (!api.IsLoggedIn) return RedirectToAction("Login", "Account");
         var result = await api.GetAsync<OrderVm>($"api/orders/{id}");
         return !result.Success || result.Data is null ? NotFound() : View(result.Data);
     }
     [HttpPost]
     public async Task<IActionResult> Cancel(Guid id)
     {
+        if (!api.IsLoggedIn) return RedirectToAction("Login", "Account");
         var result = await api.PostAsync<object>($"api/orders/{id}/cancel", new { note = "Hủy từ giao diện khách hàng." });
         TempData[result.Success ? "Success" : "Error"] = result.Success ? "Đã hủy đơn." : result.Error;
         return RedirectToAction("Index");

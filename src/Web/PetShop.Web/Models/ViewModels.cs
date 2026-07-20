@@ -17,7 +17,15 @@ public class RegisterVm
     public string? Address { get; set; }
 }
 public sealed record UserVm(Guid Id, string FullName, string Email, string? Phone, string? Address,
-    bool IsActive, DateTime CreatedAt, IReadOnlyCollection<string> Roles);
+    bool IsActive, DateTime CreatedAt, IReadOnlyCollection<string> Roles)
+{
+    public bool IsInRole(string role) => Roles != null && Roles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
+    public bool HasAnyRole(params string[] roles) => Roles != null && roles.Any(r => IsInRole(r));
+    public bool IsAdmin => IsInRole("Admin");
+    public bool IsStaff => IsInRole("Staff");
+    public bool IsShopOwner => IsInRole("ShopOwner");
+    public bool IsCustomer => IsInRole("Customer");
+}
 public sealed record TokenVm(string AccessToken, DateTime AccessTokenExpiresAt, string RefreshToken,
     DateTime RefreshTokenExpiresAt, UserVm User);
 public sealed record PagedVm<T>(IReadOnlyCollection<T> Items, int Page, int PageSize, int TotalItems, int TotalPages);
@@ -42,12 +50,6 @@ public sealed record ShopVm(Guid Id, Guid OwnerUserId, string Name, string? Desc
     string Address, string? TaxCode, string Status, DateTime CreatedAt, DateTime? UpdatedAt);
 public sealed record InventoryVm(Guid ProductId, Guid ShopId, int Quantity, int ReservedQuantity, int AvailableQuantity, DateTime UpdatedAt);
 public sealed record NotificationVm(Guid Id, Guid UserId, string Title, string Message, string Type, bool IsRead, DateTime CreatedAt, DateTime? ReadAt);
-public sealed record ReviewVm(Guid Id, Guid ProductId, Guid UserId, int Rating, string? Comment, DateTime CreatedAt, DateTime? UpdatedAt);
-public sealed class ProductDetailsVm
-{
-    public required ProductVm Product { get; init; }
-    public IReadOnlyCollection<ReviewVm> Reviews { get; init; } = [];
-}
 
 public sealed class ShopRequestFormVm
 {
@@ -59,6 +61,14 @@ public sealed class ShopRequestFormVm
     public string? TaxCode { get; set; }
 }
 public sealed class CategoryFormVm { [Required] public string Name { get; set; } = string.Empty; public string? Description { get; set; } }
+public sealed class VariantFormVm
+{
+    [Required] public string Name { get; set; } = "Mặc định";
+    [Required] public string Sku { get; set; } = string.Empty;
+    public decimal AdditionalPrice { get; set; } = 0;
+    public bool IsActive { get; set; } = true;
+}
+
 public sealed class ProductFormVm
 {
     public Guid Id { get; set; }
@@ -68,6 +78,7 @@ public sealed class ProductFormVm
     [Range(0.01, double.MaxValue)] public decimal Price { get; set; }
     public string? ImageUrl { get; set; }
     public bool IsActive { get; set; } = true;
+    public List<VariantFormVm> Variants { get; set; } = new();
 }
 public sealed class CheckoutVm
 {
@@ -93,9 +104,30 @@ public sealed class ShopEditVm
     public string? TaxCode { get; set; }
 }
 public sealed class StaffFormVm : RegisterVm { }
-public sealed class ReviewFormVm
+public sealed class ProfileFormVm
 {
-    [Required] public Guid ProductId { get; set; }
-    [Range(1, 5)] public int Rating { get; set; } = 5;
-    [StringLength(2000)] public string? Comment { get; set; }
+    public Guid Id { get; set; }
+    public string Email { get; set; } = string.Empty;
+    [Required] public string FullName { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string? Address { get; set; }
+    public IReadOnlyCollection<string> Roles { get; set; } = Array.Empty<string>();
+    public DateTime CreatedAt { get; set; }
 }
+public sealed record DailyRevenueVm(DateTime Date, int Orders, decimal Revenue);
+public sealed record RevenueReportVm(
+    decimal Revenue,
+    int TotalOrders,
+    int Completed,
+    int Cancelled,
+    DateTime? FromDate = null,
+    DateTime? ToDate = null,
+    IReadOnlyCollection<DailyRevenueVm>? ByDay = null)
+{
+    public decimal TotalRevenue => Revenue;
+    public int CompletedOrders => Completed;
+    public int CancelledOrders => Cancelled;
+}
+
+public sealed record ReviewVm(Guid Id, Guid ProductId, Guid UserId, int Rating, string? Comment, DateTime CreatedAt, DateTime? UpdatedAt);
+

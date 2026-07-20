@@ -84,7 +84,7 @@ public sealed class InventoryController(InventoryDbContext db, ShopClient shopCl
             item.Quantity = next; item.UpdatedAt = DateTime.UtcNow;
         }
         db.StockTransactions.Add(new StockTransaction { ShopId = shop.Id, ProductId = request.ProductId,
-            QuantityChange = request.QuantityChange, Type = request.QuantityChange > 0 ? StockTransactionType.Import : StockTransactionType.ManualAdjust,
+            QuantityChange = request.QuantityChange, Type = request.QuantityChange > 0 ? StockTransactionType.Import : StockTransactionType.Export,
             Reason = request.Reason.Trim(), PerformedBy = User.GetRequiredUserId() });
         await db.SaveChangesAsync(); return Ok(Map(item));
     }

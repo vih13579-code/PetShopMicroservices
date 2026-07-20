@@ -78,13 +78,35 @@ public sealed class OwnerProductsController(CatalogDbContext db, ShopClient shop
         product.Description = request.Description?.Trim(); product.Price = request.Price;
         product.ImageUrl = request.ImageUrl?.Trim(); product.IsActive = request.IsActive; product.UpdatedAt = DateTime.UtcNow;
 
-        db.ProductVariants.RemoveRange(product.Variants);
-        await db.SaveChangesAsync();
-
-        product.Variants = request.Variants.Select(v => new ProductVariant
+        var requestSkus = request.Variants.Select(v => v.Sku.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var existing in product.Variants)
         {
-            ProductId = product.Id, Name = v.Name.Trim(), Sku = v.Sku.Trim(), AdditionalPrice = v.AdditionalPrice, IsActive = v.IsActive
-        }).ToList();
+            if (!requestSkus.Contains(existing.Sku))
+                existing.IsActive = false;
+        }
+
+        foreach (var v in request.Variants)
+        {
+            var sku = v.Sku.Trim();
+            var existing = product.Variants.FirstOrDefault(x => string.Equals(x.Sku, sku, StringComparison.OrdinalIgnoreCase));
+            if (existing is not null)
+            {
+                existing.Name = v.Name.Trim();
+                existing.AdditionalPrice = v.AdditionalPrice;
+                existing.IsActive = v.IsActive;
+            }
+            else
+            {
+                product.Variants.Add(new ProductVariant
+                {
+                    ProductId = product.Id,
+                    Name = v.Name.Trim(),
+                    Sku = sku,
+                    AdditionalPrice = v.AdditionalPrice,
+                    IsActive = v.IsActive
+                });
+            }
+        }
         await db.SaveChangesAsync();
         return Ok(PublicCatalogController.Map(product));
     }

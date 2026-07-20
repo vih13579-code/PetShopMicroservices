@@ -1,6 +1,131 @@
 @model IReadOnlyCollection<OrderVm>
-@{ViewData["Title"]="Đơn hàng Shop";var active=Model.Count(x=>x.Status is "Pending" or "Confirmed" or "Preparing" or "Shipping");var revenue=Model.Where(x=>x.Status=="Completed").Sum(x=>x.TotalAmount);}
-<div class="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-4"><div><div class="page-kicker">PB46 · PB47 · PB56</div><h1 class="page-title">Đơn hàng của shop</h1><p class="page-subtitle">Xác nhận, chuẩn bị và theo dõi đơn. Hệ thống tự động trừ kho hoặc hoàn kho theo trạng thái.</p></div></div>
-@if(ViewBag.Error!=null){<div class="alert alert-danger">@ViewBag.Error</div>}
-<div class="row g-3 mb-4"><div class="col-md-4"><div class="surface stat-card"><div class="stat-label">Tổng đơn</div><div class="stat-value">@Model.Count</div></div></div><div class="col-md-4"><div class="surface stat-card"><div class="stat-label">Đang xử lý</div><div class="stat-value">@active</div></div></div><div class="col-md-4"><div class="surface stat-card"><div class="stat-label">Doanh thu hoàn tất</div><div class="stat-value">@revenue.ToString("N0") ₫</div></div></div></div>
-<div class="surface table-card">@if(!Model.Any()){<div class="empty-state"><div class="empty-icon">□</div><h5>Chưa có đơn hàng</h5><p>Đơn mới của shop sẽ xuất hiện ở đây.</p></div>}else{<table class="table"><thead><tr><th>Đơn hàng</th><th>Ngày đặt</th><th>Thanh toán</th><th>Tổng tiền</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>@foreach(var o in Model){var statusClass=o.Status is "Completed"?"status-success":o.Status is "Cancelled"?"status-danger":"status-warning";<tr><td><div class="order-code">@o.OrderCode</div><small class="text-muted">@o.Items.Count sản phẩm</small></td><td>@o.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td><td><span class="status-pill">@o.PaymentStatus</span></td><td class="money">@o.TotalAmount.ToString("N0") ₫</td><td><span class="status-pill @statusClass">@o.Status</span></td><td><div class="d-flex flex-wrap gap-2">@if(o.Status=="Pending"){<form asp-action="Confirm" method="post"><input type="hidden" name="id" value="@o.Id"/><button class="btn btn-sm btn-success" title="Xác nhận sẽ trừ số hàng đang giữ">Xác nhận & trừ kho</button></form>}@if(o.Status=="Confirmed"){<form asp-action="Preparing" method="post"><input type="hidden" name="id" value="@o.Id"/><button class="btn btn-sm btn-primary">Chuẩn bị hàng</button></form>}@if(o.Status=="Preparing"){<form asp-action="Shipping" method="post"><input type="hidden" name="id" value="@o.Id"/><button class="btn btn-sm btn-primary">Bắt đầu giao</button></form>}@if(o.Status=="Shipping"){<form asp-action="Complete" method="post"><input type="hidden" name="id" value="@o.Id"/><button class="btn btn-sm btn-success">Hoàn thành</button></form>}@if(o.Status is "Pending" or "Confirmed" or "Preparing"){<button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancel-@o.Id">Hủy đơn</button><div class="modal fade" id="cancel-@o.Id" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 rounded-4"><div class="modal-body p-4"><h4 class="fw-bold">Hủy đơn @o.OrderCode?</h4><p class="text-secondary">Hàng đang giữ hoặc đã trừ sẽ được hệ thống tự động hoàn lại kho. Thao tác này không thể hoàn tác.</p><form asp-action="Cancel" method="post"><input type="hidden" name="id" value="@o.Id"/><div class="d-flex justify-content-end gap-2"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Giữ đơn</button><button class="btn btn-danger">Hủy và hoàn kho</button></div></form></div></div></div></div>}</div></td></tr>}</tbody></table>}</div>
+@{
+    ViewData["Title"] = "Quản lý Đơn hàng Shop";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark mb-0">
+        <i class="bi bi-receipt-cutoff text-primary me-2"></i>Quản lý Đơn hàng Cửa hàng (Shop)
+    </h2>
+</div>
+
+@if (TempData["Success"] is string successMsg)
+{
+    <div class="alert alert-success shadow-sm mb-4"><i class="bi bi-check-circle me-1"></i>@successMsg</div>
+}
+@if (TempData["Error"] is string errorMsg)
+{
+    <div class="alert alert-danger shadow-sm mb-4"><i class="bi bi-exclamation-triangle me-1"></i>@errorMsg</div>
+}
+@if (ViewBag.Error is string err)
+{
+    <div class="alert alert-danger shadow-sm mb-4">@err</div>
+}
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Mã đơn hàng</th>
+                        <th>Khách nhận</th>
+                        <th>Tổng tiền</th>
+                        <th>Thanh toán</th>
+                        <th>Trạng thái</th>
+                        <th>Ngày tạo</th>
+                        <th class="text-end pe-3">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">Chưa có đơn hàng nào tại Cửa hàng.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var o in Model)
+                        {
+                            <tr>
+                                <td class="ps-3">
+                                    <div class="fw-bold text-primary">#@o.OrderCode</div>
+                                    <small class="text-muted"><code>@o.Id.ToString()[..8]</code></small>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold text-dark">@o.ReceiverName</div>
+                                    <small class="text-muted"><i class="bi bi-telephone me-1"></i>@o.ReceiverPhone</small>
+                                </td>
+                                <td class="fw-bold text-danger">@o.TotalAmount.ToString("N0") VNĐ</td>
+                                <td>
+                                    <span class="badge @(o.PaymentStatus == "Paid" ? "bg-success" : "bg-warning text-dark")">
+                                        @o.PaymentMethod (@o.PaymentStatus)
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge @(o.Status == "Completed" ? "bg-success" : o.Status == "Cancelled" ? "bg-danger" : "bg-info text-dark")">
+                                        @o.Status
+                                    </span>
+                                </td>
+                                <td class="small text-muted">@o.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-end pe-3">
+                                    <div class="d-flex justify-content-end gap-1">
+                                        <a asp-action="Details" asp-route-id="@o.Id" class="btn btn-sm btn-outline-info" title="Xem chi tiết">
+                                            <i class="bi bi-eye"></i> Chi tiết
+                                        </a>
+
+                                        @if (o.Status == "Pending")
+                                        {
+                                            <form asp-action="Confirm" method="post" class="d-inline">
+                                                <input type="hidden" name="id" value="@o.Id" />
+                                                <button class="btn btn-sm btn-success" title="Xác nhận đơn">Xác nhận</button>
+                                            </form>
+                                        }
+                                        @if (o.Status == "Confirmed")
+                                        {
+                                            <form asp-action="Preparing" method="post" class="d-inline">
+                                                <input type="hidden" name="id" value="@o.Id" />
+                                                <button class="btn btn-sm btn-primary" title="Chuẩn bị hàng">Chuẩn bị</button>
+                                            </form>
+                                        }
+                                        @if (o.Status == "Preparing")
+                                        {
+                                            <form asp-action="Shipping" method="post" class="d-inline">
+                                                <input type="hidden" name="id" value="@o.Id" />
+                                                <button class="btn btn-sm btn-primary" title="Bắt đầu giao">Giao hàng</button>
+                                            </form>
+                                        }
+                                        @if (o.Status == "Shipping")
+                                        {
+                                            <form asp-action="Complete" method="post" class="d-inline">
+                                                <input type="hidden" name="id" value="@o.Id" />
+                                                <button class="btn btn-sm btn-success" title="Hoàn thành đơn">Hoàn thành</button>
+                                            </form>
+                                        }
+                                        @if (o.PaymentMethod == "COD" && o.PaymentStatus == "CodPending" && o.Status != "Cancelled")
+                                        {
+                                            <form asp-action="ConfirmCodPayment" method="post" class="d-inline">
+                                                <input type="hidden" name="orderId" value="@o.Id" />
+                                                <button class="btn btn-sm btn-warning fw-semibold text-dark" title="Xác nhận tiền mặt COD">
+                                                    <i class="bi bi-cash"></i> Nhận COD
+                                                </button>
+                                            </form>
+                                        }
+                                        @if (o.Status == "Pending" || o.Status == "Confirmed" || o.Status == "Preparing")
+                                        {
+                                            <form asp-action="Cancel" method="post" class="d-inline">
+                                                <input type="hidden" name="id" value="@o.Id" />
+                                                <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Hủy đơn hàng này?');" title="Hủy đơn">Hủy</button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

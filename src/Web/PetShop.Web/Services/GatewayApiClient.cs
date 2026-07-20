@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using PetShop.Web.Models;
 
 namespace PetShop.Web.Services;
 
@@ -24,6 +25,18 @@ public sealed class GatewayApiClient(HttpClient httpClient, IHttpContextAccessor
     public void ClearToken() => accessor.HttpContext!.Session.Clear();
     public string? CurrentUserJson => accessor.HttpContext?.Session.GetString("CurrentUser");
     public bool IsLoggedIn => !string.IsNullOrWhiteSpace(accessor.HttpContext?.Session.GetString("AccessToken"));
+    public UserVm? CurrentUser
+    {
+        get
+        {
+            var json = CurrentUserJson;
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            try { return JsonSerializer.Deserialize<UserVm>(json, JsonOptions); }
+            catch { return null; }
+        }
+    }
+    public bool IsInRole(string role) => CurrentUser?.IsInRole(role) ?? false;
+    public bool HasAnyRole(params string[] roles) => CurrentUser?.HasAnyRole(roles) ?? false;
 
     public Task<ApiResult<T>> GetAsync<T>(string url) => SendAsync<T>(HttpMethod.Get, url, null);
     public Task<ApiResult<T>> PostAsync<T>(string url, object? body = null) => SendAsync<T>(HttpMethod.Post, url, body);
@@ -32,6 +45,46 @@ public sealed class GatewayApiClient(HttpClient httpClient, IHttpContextAccessor
     public Task<ApiResult<T>> DeleteAsync<T>(string url) => SendAsync<T>(HttpMethod.Delete, url, null);
 
     private async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string url, object? body)
+    {
+        var result = await SendInternalAsync<T>(method, url, body);
+        if (result.StatusCode == 401 && !string.IsNullOrWhiteSpace(accessor.HttpContext?.Session.GetString("RefreshToken")))
+        {
+            var refreshed = await TryRefreshTokenAsync();
+            if (refreshed)
+            {
+                return await SendInternalAsync<T>(method, url, body);
+            }
+        }
+        return result;
+    }
+
+    private async Task<bool> TryRefreshTokenAsync()
+    {
+        var refreshToken = accessor.HttpContext?.Session.GetString("RefreshToken");
+        if (string.IsNullOrWhiteSpace(refreshToken)) return false;
+
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Post, "api/auth/refresh");
+            req.Content = JsonContent.Create(new { refreshToken }, options: JsonOptions);
+            using var resp = await httpClient.SendAsync(req);
+            if (!resp.IsSuccessStatusCode) { ClearToken(); return false; }
+
+            var text = await resp.Content.ReadAsStringAsync();
+            var token = JsonSerializer.Deserialize<TokenVm>(text, JsonOptions);
+            if (token is null) return false;
+
+            SetToken(token.AccessToken, token.RefreshToken, JsonSerializer.Serialize(token.User, JsonOptions));
+            return true;
+        }
+        catch
+        {
+            ClearToken();
+            return false;
+        }
+    }
+
+    private async Task<ApiResult<T>> SendInternalAsync<T>(HttpMethod method, string url, object? body)
     {
         using var request = new HttpRequestMessage(method, url);
         var token = accessor.HttpContext?.Session.GetString("AccessToken");
@@ -56,6 +109,15 @@ public sealed class GatewayApiClient(HttpClient httpClient, IHttpContextAccessor
             else if (doc.RootElement.TryGetProperty("detail", out var detail)) error = detail.GetString() ?? text;
         }
         catch { /* giữ nội dung lỗi gốc */ }
+
+        if (string.IsNullOrWhiteSpace(error) || error == text)
+        {
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                error = "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.";
+            else if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                error = "Bạn không có quyền thực hiện thao tác này.";
+        }
+
         return new ApiResult<T>(false, default, error, (int)response.StatusCode);
     }
 }

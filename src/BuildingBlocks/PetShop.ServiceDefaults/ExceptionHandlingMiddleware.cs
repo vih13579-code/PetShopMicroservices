@@ -25,11 +25,17 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
         {
             await WriteProblemAsync(context, HttpStatusCode.BadRequest, ex.Message);
         }
+        catch (Exception ex) when (ex.GetType().Name.Contains("DbUpdate"))
+        {
+            var dbMsg = ex.InnerException?.Message ?? ex.Message;
+            logger.LogWarning(ex, "Database update exception occurred: {Message}", dbMsg);
+            await WriteProblemAsync(context, HttpStatusCode.BadRequest, $"Lỗi CSDL: {dbMsg}");
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Unhandled exception");
             await WriteProblemAsync(context, HttpStatusCode.InternalServerError,
-                "Đã xảy ra lỗi hệ thống. Hãy kiểm tra log của service.");
+                $"Đã xảy ra lỗi hệ thống ({ex.GetType().Name}: {ex.Message}).");
         }
     }
 

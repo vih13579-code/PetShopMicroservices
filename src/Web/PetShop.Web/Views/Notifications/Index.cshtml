@@ -1,5 +1,77 @@
 @model IReadOnlyCollection<NotificationVm>
-@{ViewData["Title"]="Thông báo";var unread=Model.Count(x=>!x.IsRead);}
-<div class="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-4"><div><div class="page-kicker">PB60 · PB61</div><h1 class="page-title">Trung tâm thông báo</h1><p class="page-subtitle">Cập nhật mới nhất về đăng ký shop, đơn hàng và thanh toán của bạn.</p></div><span class="status-pill @(unread>0?"status-warning":"status-success")">@unread chưa đọc</span></div>
-@if(ViewBag.Error!=null){<div class="alert alert-danger">@ViewBag.Error</div>}
-<div class="d-grid gap-3">@if(!Model.Any()){<div class="surface empty-state"><div class="empty-icon">✓</div><h5>Bạn đã xem hết thông báo</h5><p>Thông báo mới sẽ xuất hiện tại đây.</p></div>}@foreach(var n in Model){<article class="surface notification-card @(!n.IsRead?"unread":"")"><div class="notification-dot">@(n.Type.Contains("Payment",StringComparison.OrdinalIgnoreCase)?"₫":n.Type.Contains("Order",StringComparison.OrdinalIgnoreCase)?"□":"i")</div><div class="flex-grow-1"><div class="d-flex justify-content-between gap-3"><h5 class="fw-bold mb-1">@n.Title</h5><small class="text-muted text-nowrap">@n.CreatedAt.ToLocalTime().ToString("dd/MM · HH:mm")</small></div><p class="text-secondary mb-2">@n.Message</p><div class="d-flex align-items-center gap-2"><span class="status-pill">@n.Type</span>@if(!n.IsRead){<form asp-action="Read" method="post"><input type="hidden" name="id" value="@n.Id"/><button class="btn btn-sm btn-outline-primary">Đánh dấu đã đọc</button></form>}</div></div></article>}</div>
+@{
+    ViewData["Title"] = "Thông báo của bạn";
+    var unreadCount = Model?.Count(x => !x.IsRead) ?? 0;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark mb-0">
+        <i class="bi bi-bell-fill text-warning me-2"></i>Thông báo của bạn
+        @if (unreadCount > 0)
+        {
+            <span class="badge bg-danger fs-6 rounded-pill align-middle ms-2">@unreadCount mới</span>
+        }
+    </h2>
+    @if (unreadCount > 0)
+    {
+        <form asp-action="ReadAll" method="post">
+            <button type="submit" class="btn btn-outline-primary btn-sm fw-semibold">
+                <i class="bi bi-check2-all me-1"></i>Đánh dấu tất cả đã đọc
+            </button>
+        </form>
+    }
+</div>
+
+@if (TempData["Success"] is string successMsg)
+{
+    <div class="alert alert-success shadow-sm mb-4"><i class="bi bi-check-circle me-1"></i>@successMsg</div>
+}
+@if (ViewBag.Error is string err)
+{
+    <div class="alert alert-danger shadow-sm mb-4">@err</div>
+}
+
+<div class="row g-3">
+    @if (Model == null || !Model.Any())
+    {
+        <div class="col-12">
+            <div class="text-center py-5 bg-white rounded-3 shadow-sm">
+                <i class="bi bi-bell-slash fs-1 text-muted"></i>
+                <p class="mt-2 text-muted">Bạn chưa có thông báo nào.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        @foreach (var n in Model)
+        {
+            <div class="col-12">
+                <div class="card shadow-sm border-0 @(n.IsRead ? "bg-light opacity-75" : "border-start border-primary border-4 bg-white")">
+                    <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h6 class="fw-bold text-dark mb-0">@n.Title</h6>
+                                <span class="badge bg-secondary small">@n.Type</span>
+                                @if (!n.IsRead)
+                                {
+                                    <span class="badge bg-primary">Mới</span>
+                                }
+                            </div>
+                            <p class="mb-1 text-dark">@n.Message</p>
+                            <small class="text-muted"><i class="bi bi-clock me-1"></i>@n.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</small>
+                        </div>
+                        @if (!n.IsRead)
+                        {
+                            <form asp-action="Read" method="post" class="ms-3">
+                                <input type="hidden" name="id" value="@n.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-primary fw-semibold" title="Đánh dấu đã đọc">
+                                    <i class="bi bi-check-lg"></i> Đã đọc
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

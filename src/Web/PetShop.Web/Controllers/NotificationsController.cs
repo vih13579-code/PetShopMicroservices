@@ -8,8 +8,26 @@ public sealed class NotificationsController(GatewayApiClient api) : Controller
 {
     public async Task<IActionResult> Index()
     {
+        if (!api.IsLoggedIn) return RedirectToAction("Login", "Account");
         var result = await api.GetAsync<IReadOnlyCollection<NotificationVm>>("api/notifications?take=100");
-        ViewBag.Error = result.Error; return View(result.Data ?? []);
+        ViewBag.Error = result.Error;
+        return View(result.Data ?? []);
     }
-    [HttpPost] public async Task<IActionResult> Read(Guid id) { await api.PatchAsync<object>($"api/notifications/{id}/read"); return RedirectToAction("Index"); }
+
+    [HttpPost]
+    public async Task<IActionResult> Read(Guid id)
+    {
+        if (!api.IsLoggedIn) return RedirectToAction("Login", "Account");
+        await api.PatchAsync<object>($"api/notifications/{id}/read");
+        return RedirectToAction("Index");
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> ReadAll()
+    {
+        if (!api.IsLoggedIn) return RedirectToAction("Login", "Account");
+        var r = await api.PatchAsync<object>("api/notifications/read-all");
+        TempData[r.Success ? "Success" : "Error"] = r.Success ? "Đã đánh dấu tất cả thông báo là đã đọc." : r.Error;
+        return RedirectToAction("Index");
+    }
 }

@@ -1,2 +1,104 @@
 @model IReadOnlyCollection<ShopVm>
-@{ViewData["Title"]="Quản lý Shop";}<h2>Danh sách Shop</h2>@if(ViewBag.Error!=null){<div class="alert alert-danger">@ViewBag.Error</div>}<table class="table"><thead><tr><th>Tên</th><th>Chủ</th><th>Trạng thái</th><th></th></tr></thead><tbody>@foreach(var s in Model){<tr><td>@s.Name</td><td>@s.OwnerUserId</td><td>@s.Status</td><td><form method="post" asp-action="@(s.Status=="Active"?"Lock":"Unlock")"><input type="hidden" name="id" value="@s.Id"/><button class="btn btn-sm">@(s.Status=="Active"?"Khóa":"Mở")</button></form></td></tr>}</tbody></table>
+@{
+    ViewData["Title"] = "Quản lý Cửa hàng";
+    var currentStatus = ViewBag.Status as string;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark mb-0">
+        <i class="bi bi-shop text-primary me-2"></i>Quản lý Danh sách Shop (Admin / Staff)
+    </h2>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                    <input name="keyword" value="@ViewBag.Keyword" class="form-control" placeholder="Tìm theo tên shop, email..." />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <select name="status" class="form-select">
+                    <option value="">-- Tất cả Trạng thái --</option>
+                    <option value="Active" selected="@(currentStatus == "Active")">Hoạt động (Active)</option>
+                    <option value="Locked" selected="@(currentStatus == "Locked")">Đã khóa (Locked)</option>
+                    <option value="Closed" selected="@(currentStatus == "Closed")">Đã đóng (Closed)</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100 fw-semibold">
+                    <i class="bi bi-filter me-1"></i>Tìm & Lọc
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger shadow-sm mb-4">@ViewBag.Error</div>
+}
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Tên Shop</th>
+                        <th>Liên hệ</th>
+                        <th>Địa chỉ</th>
+                        <th>Trạng thái</th>
+                        <th>Ngày tạo</th>
+                        <th class="text-end pe-3">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">Không tìm thấy Cửa hàng nào.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var s in Model)
+                        {
+                            <tr>
+                                <td class="ps-3">
+                                    <div class="fw-bold text-dark">@s.Name</div>
+                                    <small class="text-muted">Mã Shop: <code>@s.Id.ToString()[..8]</code></small>
+                                </td>
+                                <td>
+                                    <div><i class="bi bi-envelope me-1"></i>@s.Email</div>
+                                    <small class="text-muted"><i class="bi bi-telephone me-1"></i>@s.Phone</small>
+                                </td>
+                                <td><small class="text-muted">@s.Address</small></td>
+                                <td>
+                                    <span class="badge @(s.Status == "Active" ? "bg-success" : s.Status == "Locked" ? "bg-danger" : "bg-secondary")">
+                                        @s.Status
+                                    </span>
+                                </td>
+                                <td class="small text-muted">@s.CreatedAt.ToString("dd/MM/yyyy")</td>
+                                <td class="text-end pe-3">
+                                    @if (s.Status != "Closed")
+                                    {
+                                        <form method="post" asp-action="@(s.Status == "Active" ? "Lock" : "Unlock")" class="d-inline">
+                                            <input type="hidden" name="id" value="@s.Id" />
+                                            <button type="submit" class="btn btn-sm @(s.Status == "Active" ? "btn-outline-danger" : "btn-outline-success")">
+                                                <i class="bi @(s.Status == "Active" ? "bi-lock" : "bi-unlock") me-1"></i>
+                                                @(s.Status == "Active" ? "Khóa Shop" : "Mở khóa Shop")
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
