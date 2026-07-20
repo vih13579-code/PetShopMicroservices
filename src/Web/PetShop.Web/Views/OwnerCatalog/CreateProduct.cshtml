@@ -1,0 +1,75 @@
+@model ProductFormVm
+@{
+    ViewData["Title"] = "Tạo sản phẩm";
+    var categories = (IReadOnlyCollection<CategoryVm>)(ViewBag.Categories ?? Array.Empty<CategoryVm>());
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark mb-0"><i class="bi bi-box-seam text-success me-2"></i>Tạo sản phẩm mới</h2>
+    <a asp-action="Products" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Quay lại</a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <form method="post">
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Danh mục</label>
+                    <select asp-for="CategoryId" class="form-select">
+                        @foreach (var c in categories)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Name" class="form-label fw-semibold">Tên sản phẩm</label>
+                    <input asp-for="Name" class="form-control" placeholder="Nhập tên sản phẩm" />
+                </div>
+                <div class="col-12">
+                    <label asp-for="Description" class="form-label fw-semibold">Mô tả</label>
+                    <textarea asp-for="Description" class="form-control" rows="3" placeholder="Mô tả chi tiết sản phẩm..."></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Price" class="form-label fw-semibold">Giá bán (VNĐ)</label>
+                    <input asp-for="Price" class="form-control" type="number" step="1000" />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="ImageUrl" class="form-label fw-semibold">Đường dẫn hình ảnh (URL)</label>
+                    <input asp-for="ImageUrl" class="form-control" placeholder="https://..." />
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <label class="form-check-label fw-semibold" asp-for="IsActive">Hiển thị & Cho phép bán</label>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-tags text-primary me-2"></i>Phân loại sản phẩm / Mã SKU (Tùy chọn)</h5>
+            <div class="alert alert-light border mb-3 small text-muted">
+                <i class="bi bi-info-circle me-1"></i> Nếu không nhập mã SKU, hệ thống sẽ tự tạo mã mặc định cho sản phẩm.
+            </div>
+
+            <div class="row g-3 bg-light p-3 rounded mb-4">
+                <div class="col-md-5">
+                    <label class="form-label small fw-semibold">Tên phân loại</label>
+                    <input name="Variants[0].Name" class="form-control" placeholder="Mặc định" value="Mặc định" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Mã SKU</label>
+                    <input name="Variants[0].Sku" class="form-control" placeholder="VD: DOG-FOOD-01" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">Giá chênh lệch (+/- VNĐ)</label>
+                    <input name="Variants[0].AdditionalPrice" class="form-control" type="number" value="0" />
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success fw-bold px-4"><i class="bi bi-check-lg me-1"></i>Lưu sản phẩm</button>
+        </form>
+    </div>
+</div>

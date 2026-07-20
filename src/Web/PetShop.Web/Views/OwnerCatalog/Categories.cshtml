@@ -1,23 +1,127 @@
-@model OwnerCategoriesPageVm
-@{ ViewData["Title"] = "Danh mục Shop"; }
-<div class="page-head"><div><span class="eyebrow">Catalog Studio</span><h1>Danh mục sản phẩm</h1><p>Tổ chức sản phẩm để khách hàng tìm thấy nhanh hơn.</p></div></div>
-<nav class="owner-tabs"><a class="active" asp-action="Categories">Danh mục</a><a asp-action="Products">Sản phẩm</a></nav>
-@if (ViewBag.Error is string error) { <div class="alert alert-danger"><i data-lucide="circle-alert"></i>@error</div> }
-<div class="row g-4">
-    <div class="col-lg-4">
-        <form asp-action="SaveCategory" method="post" class="surface panel" novalidate>
-            <input asp-for="Form.Id" type="hidden" />
-            <h2 class="h5 mb-3">@(Model.Form.Id == Guid.Empty ? "Thêm danh mục" : "Chỉnh sửa danh mục")</h2>
-            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
-            <div class="mb-3"><label asp-for="Form.Name" class="form-label"></label><input asp-for="Form.Name" class="form-control" required minlength="2" maxlength="150" /><span asp-validation-for="Form.Name" class="text-danger"></span></div>
-            <div class="mb-3"><label asp-for="Form.Description" class="form-label"></label><textarea asp-for="Form.Description" class="form-control" rows="4" maxlength="500"></textarea><span asp-validation-for="Form.Description" class="text-danger"></span></div>
-            <div class="form-check form-switch mb-3"><input asp-for="Form.IsActive" class="form-check-input" /><label asp-for="Form.IsActive" class="form-check-label"></label></div>
-            <div class="d-flex gap-2"><button class="btn btn-primary flex-grow-1"><i data-lucide="save"></i>Lưu danh mục</button>@if(Model.Form.Id != Guid.Empty){<a class="btn btn-light" asp-action="Categories">Hủy</a>}</div>
+@model IReadOnlyCollection<CategoryVm>
+@{
+    ViewData["Title"] = "Quản lý Danh mục";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark mb-0">
+        <i class="bi bi-tags text-primary me-2"></i>Danh mục sản phẩm Cửa hàng
+    </h2>
+    <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại Dashboard
+    </a>
+</div>
+
+@if (TempData["Success"] is string successMsg)
+{
+    <div class="alert alert-success shadow-sm mb-4"><i class="bi bi-check-circle me-1"></i>@successMsg</div>
+}
+@if (TempData["Error"] is string errorMsg)
+{
+    <div class="alert alert-danger shadow-sm mb-4"><i class="bi bi-exclamation-triangle me-1"></i>@errorMsg</div>
+}
+@if (ViewBag.Error is string err)
+{
+    <div class="alert alert-danger shadow-sm mb-4">@err</div>
+}
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 border-0">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-plus-circle me-2 text-success"></i>Tạo Danh mục Mới</h5>
+    </div>
+    <div class="card-body pt-0">
+        <form asp-action="CreateCategory" method="post" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label small fw-semibold">Tên danh mục</label>
+                <input name="Name" class="form-control" required placeholder="Nhập tên danh mục (VD: Thức ăn khô...)" />
+            </div>
+            <div class="col-md-5">
+                <label class="form-label small fw-semibold">Mô tả ngắn</label>
+                <input name="Description" class="form-control" placeholder="Mô tả danh mục..." />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-success w-100 fw-semibold">
+                    <i class="bi bi-plus-lg me-1"></i>Tạo
+                </button>
+            </div>
         </form>
     </div>
-    <div class="col-lg-8"><div class="surface table-responsive"><table class="table"><thead><tr><th>Danh mục</th><th>Trạng thái</th><th>Ngày tạo</th><th></th></tr></thead><tbody>
-    @foreach (var category in Model.Items) { <tr><td><strong>@category.Name</strong><div class="small text-secondary mt-1">@(category.Description ?? "Chưa có mô tả")</div></td><td><span class="status @(category.IsActive ? "status-on" : "status-off")">@(category.IsActive ? "Hoạt động" : "Đã ẩn")</span></td><td>@category.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td><td><div class="action-row"><a class="btn btn-light icon-btn" asp-action="Categories" asp-route-editId="@category.Id" title="Sửa"><i data-lucide="pencil"></i></a><form asp-action="DeleteCategory" method="post" onsubmit="return confirm('Xóa danh mục này?');"><input type="hidden" name="id" value="@category.Id"/><button class="btn btn-light icon-btn text-danger" title="Xóa"><i data-lucide="trash-2"></i></button></form></div></td></tr> }
-    @if (!Model.Items.Any()) { <tr><td colspan="4"><div class="empty"><i data-lucide="folders"></i><div>Shop chưa có danh mục nào.</div></div></td></tr> }
-    </tbody></table></div></div>
 </div>
-@section Scripts { <partial name="_ValidationScriptsPartial" /> }
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Tên danh mục</th>
+                        <th>Mô tả</th>
+                        <th>Ngày tạo</th>
+                        <th class="text-end pe-3">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">Chưa có danh mục nào. Hãy tạo mới bên trên.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var c in Model)
+                        {
+                            <tr>
+                                <td class="ps-3 fw-bold text-dark">@c.Name</td>
+                                <td><span class="text-muted">@(string.IsNullOrWhiteSpace(c.Description) ? "-" : c.Description)</span></td>
+                                <td class="small text-muted">@c.CreatedAt.ToString("dd/MM/yyyy")</td>
+                                <td class="text-end pe-3">
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal-@c.Id" title="Chỉnh sửa">
+                                            <i class="bi bi-pencil"></i> Sửa
+                                        </button>
+                                        <form asp-action="DeleteCategory" method="post" class="d-inline">
+                                            <input type="hidden" name="id" value="@c.Id" />
+                                            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Bạn có chắc chắn muốn xóa danh mục này?');" title="Xóa">
+                                                <i class="bi bi-trash"></i> Xóa
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    <!-- Modal Sửa Danh Mục -->
+                                    <div class="modal fade text-start" id="editModal-@c.Id" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <form asp-action="EditCategory" method="post">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title fw-bold">Chỉnh sửa danh mục</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <input type="hidden" name="id" value="@c.Id" />
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-semibold">Tên danh mục</label>
+                                                            <input name="Name" value="@c.Name" class="form-control" required />
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-semibold">Mô tả</label>
+                                                            <textarea name="Description" class="form-control" rows="3">@c.Description</textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                                                        <button type="submit" class="btn btn-warning fw-bold">Lưu thay đổi</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

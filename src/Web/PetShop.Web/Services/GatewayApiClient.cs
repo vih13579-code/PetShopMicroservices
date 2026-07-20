@@ -23,8 +23,6 @@ public sealed class GatewayApiClient(HttpClient httpClient, IHttpContextAccessor
     }
 
     public void ClearToken() => accessor.HttpContext!.Session.Clear();
-    public void UpdateCurrentUser(object user) => accessor.HttpContext!.Session.SetString(
-        "CurrentUser", JsonSerializer.Serialize(user, JsonOptions));
     public string? CurrentUserJson => accessor.HttpContext?.Session.GetString("CurrentUser");
     public bool IsLoggedIn => !string.IsNullOrWhiteSpace(accessor.HttpContext?.Session.GetString("AccessToken"));
     public UserVm? CurrentUser
@@ -34,11 +32,11 @@ public sealed class GatewayApiClient(HttpClient httpClient, IHttpContextAccessor
             var json = CurrentUserJson;
             if (string.IsNullOrWhiteSpace(json)) return null;
             try { return JsonSerializer.Deserialize<UserVm>(json, JsonOptions); }
-            catch (JsonException) { return null; }
+            catch { return null; }
         }
     }
-    public bool IsInRole(string role) => CurrentUser?.IsInRole(role) == true;
-    public bool HasAnyRole(params string[] roles) => CurrentUser?.HasAnyRole(roles) == true;
+    public bool IsInRole(string role) => CurrentUser?.IsInRole(role) ?? false;
+    public bool HasAnyRole(params string[] roles) => CurrentUser?.HasAnyRole(roles) ?? false;
 
     public Task<ApiResult<T>> GetAsync<T>(string url) => SendAsync<T>(HttpMethod.Get, url, null);
     public Task<ApiResult<T>> PostAsync<T>(string url, object? body = null) => SendAsync<T>(HttpMethod.Post, url, body);
@@ -46,7 +44,47 @@ public sealed class GatewayApiClient(HttpClient httpClient, IHttpContextAccessor
     public Task<ApiResult<T>> PatchAsync<T>(string url, object? body = null) => SendAsync<T>(HttpMethod.Patch, url, body);
     public Task<ApiResult<T>> DeleteAsync<T>(string url) => SendAsync<T>(HttpMethod.Delete, url, null);
 
-    private async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string url, object? body, bool allowRefresh = true)
+    private async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string url, object? body)
+    {
+        var result = await SendInternalAsync<T>(method, url, body);
+        if (result.StatusCode == 401 && !string.IsNullOrWhiteSpace(accessor.HttpContext?.Session.GetString("RefreshToken")))
+        {
+            var refreshed = await TryRefreshTokenAsync();
+            if (refreshed)
+            {
+                return await SendInternalAsync<T>(method, url, body);
+            }
+        }
+        return result;
+    }
+
+    private async Task<bool> TryRefreshTokenAsync()
+    {
+        var refreshToken = accessor.HttpContext?.Session.GetString("RefreshToken");
+        if (string.IsNullOrWhiteSpace(refreshToken)) return false;
+
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Post, "api/auth/refresh");
+            req.Content = JsonContent.Create(new { refreshToken }, options: JsonOptions);
+            using var resp = await httpClient.SendAsync(req);
+            if (!resp.IsSuccessStatusCode) { ClearToken(); return false; }
+
+            var text = await resp.Content.ReadAsStringAsync();
+            var token = JsonSerializer.Deserialize<TokenVm>(text, JsonOptions);
+            if (token is null) return false;
+
+            SetToken(token.AccessToken, token.RefreshToken, JsonSerializer.Serialize(token.User, JsonOptions));
+            return true;
+        }
+        catch
+        {
+            ClearToken();
+            return false;
+        }
+    }
+
+    private async Task<ApiResult<T>> SendInternalAsync<T>(HttpMethod method, string url, object? body)
     {
         using var request = new HttpRequestMessage(method, url);
         var token = accessor.HttpContext?.Session.GetString("AccessToken");
@@ -55,11 +93,6 @@ public sealed class GatewayApiClient(HttpClient httpClient, IHttpContextAccessor
 
         using var response = await httpClient.SendAsync(request);
         var text = await response.Content.ReadAsStringAsync();
-        if ((response.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
-             response.StatusCode == System.Net.HttpStatusCode.Forbidden) &&
-            allowRefresh && await TryRefreshTokenAsync())
-            return await SendAsync<T>(method, url, body, allowRefresh: false);
-
         if (response.IsSuccessStatusCode)
         {
             if (typeof(T) == typeof(object) || string.IsNullOrWhiteSpace(text))
@@ -68,56 +101,23 @@ public sealed class GatewayApiClient(HttpClient httpClient, IHttpContextAccessor
             return new ApiResult<T>(true, data, null, (int)response.StatusCode);
         }
 
-        var error = string.Empty;
+        var error = text;
         try
         {
             using var doc = JsonDocument.Parse(text);
             if (doc.RootElement.TryGetProperty("message", out var msg)) error = msg.GetString() ?? text;
             else if (doc.RootElement.TryGetProperty("detail", out var detail)) error = detail.GetString() ?? text;
-            else if (doc.RootElement.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Object)
-                error = string.Join(" ", errors.EnumerateObject().SelectMany(x => x.Value.EnumerateArray()).Select(x => x.GetString()).Where(x => !string.IsNullOrWhiteSpace(x)));
-            else if (doc.RootElement.TryGetProperty("title", out var title)) error = title.GetString() ?? text;
         }
         catch { /* giữ nội dung lỗi gốc */ }
-        if (string.IsNullOrWhiteSpace(error)) error = GetFallbackError((int)response.StatusCode);
-        return new ApiResult<T>(false, default, error, (int)response.StatusCode);
-    }
 
-    private async Task<bool> TryRefreshTokenAsync()
-    {
-        var session = accessor.HttpContext?.Session;
-        var refreshToken = session?.GetString("RefreshToken");
-        if (session is null || string.IsNullOrWhiteSpace(refreshToken)) return false;
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, "api/auth/refresh")
+        if (string.IsNullOrWhiteSpace(error) || error == text)
         {
-            Content = JsonContent.Create(new { refreshToken }, options: JsonOptions)
-        };
-        using var response = await httpClient.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
-        {
-            session.Clear();
-            return false;
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                error = "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.";
+            else if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                error = "Bạn không có quyền thực hiện thao tác này.";
         }
 
-        var token = await response.Content.ReadFromJsonAsync<RefreshTokenResponse>(JsonOptions);
-        if (token is null) return false;
-        session.SetString("AccessToken", token.AccessToken);
-        session.SetString("RefreshToken", token.RefreshToken);
-        session.SetString("CurrentUser", JsonSerializer.Serialize(token.User, JsonOptions));
-        return true;
+        return new ApiResult<T>(false, default, error, (int)response.StatusCode);
     }
-
-    private static string GetFallbackError(int statusCode) => statusCode switch
-    {
-        400 => "Dữ liệu gửi lên không hợp lệ. Vui lòng kiểm tra lại thông tin.",
-        401 => "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
-        403 => "Tài khoản của bạn không có quyền thực hiện chức năng này.",
-        404 => "Không tìm thấy dữ liệu yêu cầu.",
-        409 => "Dữ liệu bị trùng hoặc đang được sử dụng.",
-        502 or 503 or 504 => "Service đang tạm thời không phản hồi. Vui lòng kiểm tra các service và thử lại.",
-        _ => $"Không thể xử lý yêu cầu (HTTP {statusCode})."
-    };
-
-    private sealed record RefreshTokenResponse(string AccessToken, string RefreshToken, JsonElement User);
 }
