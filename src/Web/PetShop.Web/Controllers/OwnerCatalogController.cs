@@ -59,6 +59,23 @@ public sealed class OwnerCatalogController(GatewayApiClient api) : Controller
     }
 
     [HttpGet]
+    public async Task<IActionResult> ProductDetails(Guid id)
+    {
+        if (!api.IsLoggedIn) return RedirectToAction("Login", "Account");
+        var product = await api.GetAsync<ProductVm>($"api/owner/catalog/products/{id}");
+        if (!product.Success || product.Data is null)
+        {
+            TempData["Error"] = product.Error ?? "Không tìm thấy sản phẩm trong Shop của bạn.";
+            return RedirectToAction(nameof(Products));
+        }
+
+        var reviews = await api.GetAsync<IReadOnlyCollection<ReviewVm>>($"api/catalog/products/{id}/reviews");
+        ViewBag.Reviews = reviews.Data ?? [];
+        ViewBag.ReviewsError = reviews.Success ? null : reviews.Error;
+        return View(product.Data);
+    }
+
+    [HttpGet]
     public async Task<IActionResult> ProductForm(Guid? id)
     {
         if (!api.IsLoggedIn) return RedirectToAction("Login", "Account");

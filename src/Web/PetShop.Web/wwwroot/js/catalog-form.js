@@ -3,6 +3,7 @@
     const container = document.querySelector('#variants');
     const template = document.querySelector('#variantTemplate');
     const error = document.querySelector('#variantError');
+    const removedVariants = document.querySelector('#removedVariants');
     if (!form || !container || !template) return;
 
     const reindex = () => {
@@ -22,7 +23,16 @@
     container.addEventListener('click', event => {
         const button = event.target.closest('.remove-variant');
         if (!button) return;
-        button.closest('.variant-row').remove();
+        const row = button.closest('.variant-row');
+        const id = row.querySelector('input[name$=".Id"]')?.value;
+        if (id) {
+            const marker = document.createElement('input');
+            marker.type = 'hidden';
+            marker.name = 'RemovedVariantIds';
+            marker.value = id;
+            removedVariants.appendChild(marker);
+        }
+        row.remove();
         reindex();
     });
 

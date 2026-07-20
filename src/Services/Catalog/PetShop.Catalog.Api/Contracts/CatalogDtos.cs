@@ -33,6 +33,7 @@ public sealed class ProductRequest : IValidatableObject
     [Url, StringLength(1000)] public string? ImageUrl { get; set; }
     public bool IsActive { get; set; } = true;
     public List<VariantRequest> Variants { get; set; } = [];
+    public List<Guid> RemovedVariantIds { get; set; } = [];
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {

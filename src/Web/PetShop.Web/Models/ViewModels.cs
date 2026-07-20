@@ -101,6 +101,7 @@ public sealed class ProductFormVm : IValidatableObject
     [Url(ErrorMessage = "URL hình ảnh không hợp lệ."), StringLength(1000), Display(Name = "Ảnh sản phẩm")] public string? ImageUrl { get; set; }
     public bool IsActive { get; set; } = true;
     public List<VariantFormVm> Variants { get; set; } = [];
+    public List<Guid> RemovedVariantIds { get; set; } = [];
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
