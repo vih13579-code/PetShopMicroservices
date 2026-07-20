@@ -42,6 +42,12 @@ public sealed record ShopVm(Guid Id, Guid OwnerUserId, string Name, string? Desc
     string Address, string? TaxCode, string Status, DateTime CreatedAt, DateTime? UpdatedAt);
 public sealed record InventoryVm(Guid ProductId, Guid ShopId, int Quantity, int ReservedQuantity, int AvailableQuantity, DateTime UpdatedAt);
 public sealed record NotificationVm(Guid Id, Guid UserId, string Title, string Message, string Type, bool IsRead, DateTime CreatedAt, DateTime? ReadAt);
+public sealed record ReviewVm(Guid Id, Guid ProductId, Guid UserId, int Rating, string? Comment, DateTime CreatedAt, DateTime? UpdatedAt);
+public sealed class ProductDetailsVm
+{
+    public required ProductVm Product { get; init; }
+    public IReadOnlyCollection<ReviewVm> Reviews { get; init; } = [];
+}
 
 public sealed class ShopRequestFormVm
 {
@@ -87,3 +93,9 @@ public sealed class ShopEditVm
     public string? TaxCode { get; set; }
 }
 public sealed class StaffFormVm : RegisterVm { }
+public sealed class ReviewFormVm
+{
+    [Required] public Guid ProductId { get; set; }
+    [Range(1, 5)] public int Rating { get; set; } = 5;
+    [StringLength(2000)] public string? Comment { get; set; }
+}
