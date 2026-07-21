@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using PetShop.Identity.Api.Domain;
 
 namespace PetShop.Identity.Api.Contracts;
 
@@ -34,13 +35,21 @@ public sealed class UpdateProfileRequest
     [StringLength(500)] public string? Address { get; set; }
 }
 
-public sealed class CreateStaffRequest : RegisterRequest { }
+public sealed class CreateStaffRequest : RegisterRequest
+{
+    public IReadOnlyCollection<string> Roles { get; set; } = [AppRoles.Staff];
+}
 
 public sealed class AdminUpdateAccountRequest
 {
     [Required, StringLength(150, MinimumLength = 2)] public string FullName { get; set; } = string.Empty;
     [Phone, StringLength(30)] public string? Phone { get; set; }
     [StringLength(500)] public string? Address { get; set; }
+}
+
+public sealed class UpdateRolesRequest
+{
+    [Required, MinLength(1)] public IReadOnlyCollection<string> Roles { get; set; } = Array.Empty<string>();
 }
 
 public sealed record UserResponse(

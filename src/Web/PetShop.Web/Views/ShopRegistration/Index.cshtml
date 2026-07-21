@@ -1,2 +1,77 @@
 @model IReadOnlyCollection<ShopRequestVm>
-@{ViewData["Title"]="Yêu cầu mở Shop";}<h2>Yêu cầu mở Shop</h2><a class="btn btn-primary mb-3" asp-action="Create">Gửi yêu cầu</a><table class="table"><thead><tr><th>Shop</th><th>Trạng thái</th><th>Lý do</th><th>Ngày gửi</th></tr></thead><tbody>@foreach(var x in Model){<tr><td>@x.ShopName</td><td>@x.Status</td><td>@x.RejectionReason</td><td>@x.CreatedAt.ToLocalTime()</td></tr>}</tbody></table>
+@{
+    ViewData["Title"] = "Yêu cầu mở Shop";
+}
+
+<div class="page-header">
+    <div>
+        <span class="page-kicker">KÊNH ĐỐI TÁC</span>
+        <h1 class="page-heading">Yêu cầu mở Shop</h1>
+        <p class="page-subtitle">Theo dõi hồ sơ đăng ký cửa hàng và phản hồi xử lý từ đội ngũ PET Shop.</p>
+    </div>
+    <a class="btn btn-warning" asp-action="Create">
+        <i class="bi bi-shop-window me-1"></i>Gửi yêu cầu mới
+    </a>
+</div>
+
+@if (Model == null || !Model.Any())
+{
+    <div class="empty-state text-center">
+        <i class="bi bi-shop-window"></i>
+        <h4>Chưa có yêu cầu mở shop</h4>
+        <p class="mb-4">Gửi hồ sơ đầu tiên để bắt đầu kinh doanh trên hệ thống.</p>
+        <a asp-action="Create" class="btn btn-warning">Đăng ký mở shop</a>
+    </div>
+}
+else
+{
+    <div class="table-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Tên shop</th>
+                        <th>Ngày gửi</th>
+                        <th>Trạng thái</th>
+                        <th>Phản hồi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var request in Model)
+                    {
+                        var statusClass = request.Status switch
+                        {
+                            "Approved" => "status-success",
+                            "Rejected" => "status-danger",
+                            "Pending" => "status-pending",
+                            _ => "status-info"
+                        };
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="icon-tile"><i class="bi bi-shop"></i></div>
+                                    <div>
+                                        <div class="fw-bold">@request.ShopName</div>
+                                        <small class="text-muted">@request.Email</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-muted">@request.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td><span class="status-pill @statusClass">@request.Status</span></td>
+                            <td>
+                                @if (string.IsNullOrWhiteSpace(request.RejectionReason))
+                                {
+                                    <span class="text-muted">Chưa có phản hồi</span>
+                                }
+                                else
+                                {
+                                    <span>@request.RejectionReason</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

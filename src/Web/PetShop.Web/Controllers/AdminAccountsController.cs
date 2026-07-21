@@ -56,6 +56,7 @@ public sealed class AdminAccountsController(GatewayApiClient api) : Controller
             Address = result.Data.Address,
             Roles = result.Data.Roles,
             CreatedAt = result.Data.CreatedAt
+            ,EditableRoles = ["Staff", "Customer"]
         };
         return View(model);
     }
@@ -80,6 +81,26 @@ public sealed class AdminAccountsController(GatewayApiClient api) : Controller
         }
 
         TempData["Success"] = "Đã cập nhật thông tin tài khoản.";
+        return RedirectToAction("Details", new { id });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Roles(Guid id, List<string> roles)
+    {
+        var guard = CheckAdminRole(); if (guard != null) return guard;
+        roles = roles.Where(x => x is "Staff" or "Customer").Distinct().Take(1).ToList();
+        if (roles.Count != 1)
+        {
+            TempData["Error"] = "Vui lòng chọn đúng một role.";
+            return RedirectToAction("Edit", new { id });
+        }
+        var result = await api.PatchAsync<UserVm>($"api/admin/accounts/{id}/roles", new { roles });
+        if (!result.Success)
+        {
+            TempData["Error"] = result.Error ?? "Không thể cập nhật role.";
+            return RedirectToAction("Edit", new { id });
+        }
+        TempData["Success"] = "Đã cập nhật role.";
         return RedirectToAction("Details", new { id });
     }
 

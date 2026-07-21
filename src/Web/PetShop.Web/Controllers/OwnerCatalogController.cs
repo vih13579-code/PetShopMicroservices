@@ -4,7 +4,7 @@ using PetShop.Web.Services;
 
 namespace PetShop.Web.Controllers;
 
-public sealed class OwnerCatalogController(GatewayApiClient api) : Controller
+public sealed class OwnerCatalogController(GatewayApiClient api, IWebHostEnvironment environment) : Controller
 {
     private IActionResult? CheckShopOwnerRole()
     {
@@ -98,6 +98,7 @@ public sealed class OwnerCatalogController(GatewayApiClient api) : Controller
         var categories = await api.GetAsync<IReadOnlyCollection<CategoryVm>>("api/owner/catalog/categories");
         ViewBag.Categories = categories.Data ?? [];
         if (!ModelState.IsValid) return View(model);
+        model.ImageUrl = await SaveImageAsync(model.ImageFile, model.ImageUrl);
 
         var variantsPayload = model.Variants != null && model.Variants.Count > 0
             ? model.Variants.Select(v => new { name = v.Name.Trim(), sku = v.Sku.Trim(), additionalPrice = v.AdditionalPrice, isActive = v.IsActive }).Cast<object>().ToArray()
@@ -146,6 +147,7 @@ public sealed class OwnerCatalogController(GatewayApiClient api) : Controller
         var categories = await api.GetAsync<IReadOnlyCollection<CategoryVm>>("api/owner/catalog/categories");
         ViewBag.Categories = categories.Data ?? [];
         if (!ModelState.IsValid) return View(model);
+        model.ImageUrl = await SaveImageAsync(model.ImageFile, model.ImageUrl);
 
         var variantsPayload = model.Variants != null && model.Variants.Count > 0
             ? model.Variants.Select(v => new { name = v.Name.Trim(), sku = v.Sku.Trim(), additionalPrice = v.AdditionalPrice, isActive = v.IsActive }).Cast<object>().ToArray()
@@ -155,6 +157,22 @@ public sealed class OwnerCatalogController(GatewayApiClient api) : Controller
         if (!r.Success) { ModelState.AddModelError(string.Empty, r.Error ?? "Không thể cập nhật sản phẩm."); return View(model); }
         TempData["Success"] = "Đã cập nhật sản phẩm.";
         return RedirectToAction("Products");
+    }
+
+    private async Task<string?> SaveImageAsync(IFormFile? file, string? existingUrl)
+    {
+        if (file is null || file.Length == 0) return existingUrl;
+        var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowed.Contains(extension) || file.Length > 5 * 1024 * 1024) return existingUrl;
+        var folder = Path.Combine(environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot"), "uploads");
+        Directory.CreateDirectory(folder);
+        var name = $"{Guid.NewGuid():N}{extension}";
+        await using var stream = System.IO.File.Create(Path.Combine(folder, name));
+        await file.CopyToAsync(stream);
+        // Catalog API validates ImageUrl with [Url], so send an absolute URL
+        // instead of the relative path /uploads/{name}.
+        return $"{Request.Scheme}://{Request.Host}/uploads/{name}";
     }
 
     [HttpPost]

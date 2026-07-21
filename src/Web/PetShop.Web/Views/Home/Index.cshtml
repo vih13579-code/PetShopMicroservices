@@ -1,1 +1,45 @@
-@{ViewData["Title"]="Trang chủ";}<div class="p-5 bg-light rounded-3"><h1>Hệ thống PET Shop đa cửa hàng</h1><p>ASP.NET Core MVC gọi các Web API Microservice thông qua YARP API Gateway.</p><a class="btn btn-primary" asp-controller="Catalog" asp-action="Index">Xem sản phẩm</a></div>
+@model IReadOnlyCollection<ProductVm>
+@{ ViewData["Title"] = "Trang chủ"; }
+
+<section class="home-hero rounded-4 overflow-hidden shadow-sm mb-5">
+    <div id="homeCarousel" class="carousel slide" data-bs-ride="carousel">
+        <div class="carousel-indicators">
+            <button type="button" data-bs-target="#homeCarousel" data-bs-slide-to="0" class="active"></button>
+            <button type="button" data-bs-target="#homeCarousel" data-bs-slide-to="1"></button>
+            <button type="button" data-bs-target="#homeCarousel" data-bs-slide-to="2"></button>
+        </div>
+        <div class="carousel-inner">
+            <div class="carousel-item active home-slide slide-one">
+                <div class="hero-copy"><span class="hero-kicker">PET SHOP • YÊU THƯƠNG MỖI NGÀY</span><h1>Chăm sóc bé cưng<br/><span>trọn vẹn hơn</span></h1><p>Sản phẩm chất lượng, cửa hàng uy tín và mọi điều thú cưng cần trong một nơi.</p><a asp-controller="Catalog" asp-action="Index" class="btn btn-warning btn-lg">Khám phá sản phẩm <i class="bi bi-arrow-right ms-2"></i></a></div>
+                <div class="hero-orb orb-one">🐶</div>
+            </div>
+            <div class="carousel-item home-slide slide-two"><div class="hero-copy"><span class="hero-kicker">BỘ SƯU TẬP MỚI</span><h1>Niềm vui nhỏ<br/><span>mỗi ngày</span></h1><p>Đồ ăn, phụ kiện và sản phẩm chăm sóc được chọn riêng cho những người bạn bốn chân.</p><a asp-controller="Catalog" asp-action="Index" class="btn btn-light btn-lg">Xem bộ sưu tập <i class="bi bi-arrow-right ms-2"></i></a></div><div class="hero-orb orb-two">🐱</div></div>
+            <div class="carousel-item home-slide slide-three"><div class="hero-copy"><span class="hero-kicker">MỞ SHOP CÙNG PET SHOP</span><h1>Biến đam mê<br/><span>thành cửa hàng</span></h1><p>Đăng ký mở shop và bắt đầu kinh doanh trong hệ sinh thái dành cho thú cưng.</p><a asp-controller="ShopRegistration" asp-action="Index" class="btn btn-warning btn-lg">Mở shop ngay <i class="bi bi-arrow-right ms-2"></i></a></div><div class="hero-orb orb-three">🐾</div></div>
+        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#homeCarousel" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span></button>
+        <button class="carousel-control-next" type="button" data-bs-target="#homeCarousel" data-bs-slide="next"><span class="carousel-control-next-icon"></span></button>
+    </div>
+</section>
+
+<section class="row g-3 mb-5">
+    <div class="col-md-4"><div class="feature-card"><i class="bi bi-shield-check"></i><div><h6>An tâm mua sắm</h6><p>Sản phẩm được chọn lọc từ cửa hàng uy tín.</p></div></div></div>
+    <div class="col-md-4"><div class="feature-card"><i class="bi bi-truck"></i><div><h6>Giao hàng nhanh</h6><p>Đơn hàng được xử lý nhanh chóng, minh bạch.</p></div></div></div>
+    <div class="col-md-4"><div class="feature-card"><i class="bi bi-heart"></i><div><h6>Vì thú cưng</h6><p>Mọi lựa chọn đều bắt đầu từ sự yêu thương.</p></div></div></div>
+</section>
+
+<section class="d-flex justify-content-between align-items-end mb-3"><div><span class="section-kicker">GỢI Ý CHO BẠN</span><h2 class="page-title mb-0">Sản phẩm nổi bật</h2></div><a asp-controller="Catalog" asp-action="Index" class="btn btn-outline-dark">Xem tất cả <i class="bi bi-arrow-up-right ms-1"></i></a></section>
+<section class="row g-4 mb-5">
+    @if (Model.Count == 0) { <div class="col-12"><div class="empty-home"><i class="bi bi-box-seam"></i><h5>Đang cập nhật sản phẩm</h5><p>Hãy quay lại sau để khám phá các sản phẩm mới nhất.</p></div></div> }
+    @foreach (var product in Model.Take(8))
+    {
+        <div class="col-6 col-lg-3"><div class="product-card h-100"><div class="product-image">@if (!string.IsNullOrWhiteSpace(product.ImageUrl)) { <img src="@product.ImageUrl" alt="@product.Name" /> } else { <span>🐾</span> }</div><div class="p-3"><small class="text-muted">@product.CategoryName</small><h6 class="mt-1 mb-2">@product.Name</h6><div class="d-flex justify-content-between align-items-center"><strong class="text-warning-emphasis">@product.Price.ToString("N0") ₫</strong><a asp-controller="Catalog" asp-action="Details" asp-route-id="@product.Id" class="btn btn-sm btn-dark rounded-circle"><i class="bi bi-arrow-up-right"></i></a></div></div></div></div>
+    }
+</section>
+
+<style>
+    .home-hero { background:#172033; }
+    .home-slide { min-height:430px; position:relative; padding:70px 10%; color:white; overflow:hidden; }
+    .slide-one { background:linear-gradient(115deg,#172033 20%,#315477 100%); }.slide-two{background:linear-gradient(115deg,#4b2533,#c06b4a)}.slide-three{background:linear-gradient(115deg,#163d3b,#267d70)}
+    .hero-copy { position:relative; z-index:2; max-width:560px; }.hero-kicker,.section-kicker{font-size:.72rem;letter-spacing:.14em;font-weight:800;color:#ffc247}.hero-copy h1{font-size:clamp(2.2rem,5vw,4.2rem);font-weight:800;line-height:1.08;margin:15px 0}.hero-copy h1 span{color:#ffc247}.hero-copy p{color:#dbe4ef;max-width:470px;font-size:1.02rem;margin-bottom:25px}.hero-orb{position:absolute;right:10%;top:8%;font-size:15rem;filter:drop-shadow(0 25px 20px rgba(0,0,0,.2));transform:rotate(-8deg)}.orb-two{right:12%}.orb-three{right:15%;font-size:13rem}.feature-card{height:100%;display:flex;gap:15px;align-items:center;background:#fff;padding:20px;border:1px solid #e8edf4;border-radius:16px}.feature-card i{font-size:1.7rem;color:#f59e0b}.feature-card h6{margin:0}.feature-card p{margin:4px 0 0;color:#667085;font-size:.8rem}.product-card{background:#fff;border:1px solid #e8edf4;border-radius:16px;overflow:hidden;transition:.25s}.product-card:hover{transform:translateY(-5px);box-shadow:0 15px 30px rgba(23,32,51,.1)}.product-image{height:190px;background:linear-gradient(135deg,#fff8e7,#f1f5f9);display:flex;align-items:center;justify-content:center;overflow:hidden}.product-image img{width:100%;height:100%;object-fit:cover}.product-image span{font-size:4rem}.empty-home{background:#fff;border:1px dashed #d0d5dd;border-radius:16px;text-align:center;padding:55px;color:#667085}.empty-home i{font-size:3rem;color:#f59e0b}.empty-home h5{color:#172033;margin-top:12px}
+    @@media(max-width:768px){.home-slide{padding:45px 12%;min-height:440px}.hero-orb{opacity:.25;right:2%;top:15%;font-size:12rem}.feature-card{padding:15px}.product-image{height:145px}}
+</style>

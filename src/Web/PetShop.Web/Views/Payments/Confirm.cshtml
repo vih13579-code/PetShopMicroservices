@@ -5,46 +5,44 @@
     var code = ViewBag.Code as string ?? "";
 }
 
-<div class="container py-4" style="max-width: 600px;">
-    <div class="card shadow border-0">
-        <div class="card-header bg-primary text-white text-center py-3">
-            <h4 class="mb-0 fw-bold"><i class="bi bi-qr-code-scan me-2"></i>Thanh Toán Chuyển Khoản Mô Phỏng</h4>
+<div class="page-header justify-content-center text-center">
+    <div>
+        <span class="page-kicker">THANH TOÁN MÔ PHỎNG</span>
+        <h1 class="page-heading">Chuyển khoản ngân hàng</h1>
+        <p class="page-subtitle mx-auto">Kiểm tra thông tin bên dưới và xác nhận sau khi hoàn tất thao tác chuyển khoản.</p>
+    </div>
+</div>
+
+<div class="card mx-auto overflow-hidden" style="max-width: 680px;">
+    <div class="p-4 text-center text-white" style="background:linear-gradient(120deg,#172033,#315477);">
+        <div class="display-5 mb-2"><i class="bi bi-qr-code-scan"></i></div>
+        <h4 class="text-white mb-1">PETSHOP BANK</h4>
+        <p class="text-white-50 mb-0">Môi trường thanh toán mô phỏng</p>
+    </div>
+    <div class="card-body p-4 p-md-5">
+        <div class="checkout-note mb-4">
+            <i class="bi bi-info-circle text-primary fs-5"></i>
+            <small>Đây là môi trường mô phỏng. Không thực hiện chuyển tiền thật đến thông tin bên dưới.</small>
         </div>
-        <div class="card-body p-4 text-center">
-            <div class="alert alert-info mb-4">
-                <i class="bi bi-info-circle me-1"></i> Đây là môi trường mô phỏng. Hãy nhấn nút xác nhận bên dưới để hoàn tất thanh toán.
-            </div>
 
-            <div class="bg-light p-3 rounded mb-3 text-start">
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Ngân hàng:</span>
-                    <strong class="text-dark">PETSHOP BANK (MOCK)</strong>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Số tài khoản:</span>
-                    <strong class="text-primary fs-5">9999-8888-6666</strong>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Chủ tài khoản:</span>
-                    <strong class="text-dark">PETSHOP SYSTEM</strong>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Số tiền:</span>
-                    <strong class="text-danger fs-5">@amount.ToString("N0") VNĐ</strong>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <span class="text-muted">Nội dung CK:</span>
-                    <strong class="badge bg-secondary fs-6">@code</strong>
-                </div>
-            </div>
+        <div class="soft-panel">
+            <div class="summary-row"><span class="text-muted">Ngân hàng</span><strong>PETSHOP BANK (MOCK)</strong></div>
+            <div class="summary-row"><span class="text-muted">Số tài khoản</span><strong class="fs-5 text-primary">9999-8888-6666</strong></div>
+            <div class="summary-row"><span class="text-muted">Chủ tài khoản</span><strong>PETSHOP SYSTEM</strong></div>
+            <div class="summary-row"><span class="text-muted">Số tiền</span><strong class="fs-5 text-danger">@amount.ToString("N0") VNĐ</strong></div>
+            <div class="summary-row"><span class="text-muted">Nội dung CK</span><span class="badge bg-dark fs-6">@code</span></div>
+        </div>
 
-            <form asp-controller="Payments" asp-action="ConfirmPayment" method="post" class="mt-4">
-                <input type="hidden" name="id" value="@paymentId" />
-                <button type="submit" class="btn btn-success btn-lg w-100 fw-bold">
-                    <i class="bi bi-check-circle me-2"></i>Xác Nhận Đã Chuyển Khoản
-                </button>
-            </form>
-            <a asp-controller="Orders" asp-action="Index" class="btn btn-link text-secondary mt-2">Xem danh sách đơn hàng</a>
+        <form asp-controller="Payments" asp-action="ConfirmPayment" method="post" class="mt-4">
+            <input type="hidden" name="id" value="@paymentId" />
+            <button type="submit" class="btn btn-warning btn-lg w-100">
+                <i class="bi bi-check-circle me-2"></i>Xác nhận đã chuyển khoản
+            </button>
+        </form>
+        <div class="text-center mt-3">
+            <a asp-controller="Orders" asp-action="Index" class="text-decoration-none text-muted">
+                <i class="bi bi-arrow-left me-1"></i>Xem danh sách đơn hàng
+            </a>
         </div>
     </div>
 </div>

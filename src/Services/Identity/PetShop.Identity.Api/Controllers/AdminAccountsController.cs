@@ -50,6 +50,9 @@ public sealed class AdminAccountsController(IdentityDbContext db) : ControllerBa
     [HttpPost("staff")]
     public async Task<ActionResult<UserResponse>> CreateStaff(CreateStaffRequest request)
     {
+        var roles = NormalizeRoles(request.Roles);
+        if (roles.Count == 0 || roles.Contains(AppRoles.Admin) || roles.Contains(AppRoles.ShopOwner))
+            return BadRequest(new { message = "Tài khoản staff không được gán role Admin hoặc ShopOwner." });
         var email = request.Email.Trim().ToLowerInvariant();
         if (await db.Users.AnyAsync(x => x.Email == email)) return Conflict(new { message = "Email đã tồn tại." });
 
@@ -59,8 +62,11 @@ public sealed class AdminAccountsController(IdentityDbContext db) : ControllerBa
             Phone = request.Phone?.Trim(), Address = request.Address?.Trim()
         };
         staff.PasswordHash = new PasswordHasher<User>().HashPassword(staff, request.Password);
-        var role = await db.Roles.SingleAsync(x => x.Name == AppRoles.Staff);
-        staff.UserRoles.Add(new UserRole { User = staff, Role = role });
+        var roleEntities = await db.Roles.Where(x => roles.Contains(x.Name)).ToListAsync();
+        if (roleEntities.Count != roles.Count)
+            return BadRequest(new { message = "Role không hợp lệ." });
+        foreach (var role in roleEntities)
+            staff.UserRoles.Add(new UserRole { User = staff, Role = role });
         db.Users.Add(staff);
         await db.SaveChangesAsync();
         return CreatedAtAction(nameof(GetById), new { id = staff.Id }, Map(staff));
@@ -72,9 +78,33 @@ public sealed class AdminAccountsController(IdentityDbContext db) : ControllerBa
         var user = await db.Users.Include(x => x.UserRoles).ThenInclude(x => x.Role)
             .SingleOrDefaultAsync(x => x.Id == id);
         if (user is null) return NotFound();
+        if (user.UserRoles.Any(x => x.Role.Name == AppRoles.Admin))
+            return Forbid();
         user.FullName = request.FullName.Trim();
         user.Phone = request.Phone?.Trim();
         user.Address = request.Address?.Trim();
+        user.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Ok(Map(user));
+    }
+
+    [HttpPatch("{id:guid}/roles")]
+    public async Task<ActionResult<UserResponse>> UpdateRoles(Guid id, UpdateRolesRequest request)
+    {
+        var roles = NormalizeRoles(request.Roles);
+        if (roles.Count == 0 || roles.Contains(AppRoles.Admin) || roles.Contains(AppRoles.ShopOwner))
+            return BadRequest(new { message = "Không thể gán role Admin hoặc ShopOwner qua chức năng này." });
+
+        var user = await db.Users.Include(x => x.UserRoles).ThenInclude(x => x.Role)
+            .SingleOrDefaultAsync(x => x.Id == id);
+        if (user is null) return NotFound();
+        if (id == User.GetRequiredUserId() || user.UserRoles.Any(x => x.Role.Name == AppRoles.Admin))
+            return Forbid();
+
+        var roleEntities = await db.Roles.Where(x => roles.Contains(x.Name)).ToListAsync();
+        if (roleEntities.Count != roles.Count) return BadRequest(new { message = "Role không hợp lệ." });
+        user.UserRoles.Clear();
+        foreach (var role in roleEntities) user.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id, Role = role });
         user.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return Ok(Map(user));
@@ -91,13 +121,18 @@ public sealed class AdminAccountsController(IdentityDbContext db) : ControllerBa
         if (!active && id == User.GetRequiredUserId())
             return BadRequest(new { message = "Không thể tự khóa tài khoản của chính mình." });
 
-        var user = await db.Users.SingleOrDefaultAsync(x => x.Id == id);
+        var user = await db.Users.Include(x => x.UserRoles).ThenInclude(x => x.Role).SingleOrDefaultAsync(x => x.Id == id);
         if (user is null) return NotFound();
+        if (user.UserRoles.Any(x => x.Role.Name == AppRoles.Admin)) return Forbid();
         user.IsActive = active;
         user.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return NoContent();
     }
+
+    private static HashSet<string> NormalizeRoles(IEnumerable<string>? roles) =>
+        roles?.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
 
     private static UserResponse Map(User user) => new(
         user.Id, user.FullName, user.Email, user.Phone, user.Address,

@@ -1,2 +1,77 @@
 @model RegisterVm
-@{ViewData["Title"]="Đăng ký";}<h2>Đăng ký Customer</h2><form method="post" class="col-md-6"><div asp-validation-summary="All" class="text-danger"></div><label asp-for="FullName"></label><input asp-for="FullName" class="form-control mb-2"/><label asp-for="Email"></label><input asp-for="Email" class="form-control mb-2"/><label asp-for="Password"></label><input asp-for="Password" type="password" class="form-control mb-2"/><label asp-for="Phone"></label><input asp-for="Phone" class="form-control mb-2"/><label asp-for="Address"></label><textarea asp-for="Address" class="form-control mb-3"></textarea><button class="btn btn-success">Đăng ký</button></form>
+@{
+    ViewData["Title"] = "Đăng ký";
+}
+
+<section class="auth-page">
+    <div class="auth-shell">
+        <div class="auth-visual">
+            <div>
+                <span class="page-kicker text-warning">THÀNH VIÊN MỚI</span>
+                <h2>Bắt đầu hành trình chăm sóc thú cưng</h2>
+                <p>Tạo tài khoản để khám phá sản phẩm, lưu thông tin nhận hàng và quản lý đơn mua thuận tiện hơn.</p>
+            </div>
+            <div class="auth-pet">🐱</div>
+        </div>
+
+        <div class="auth-form">
+            <div class="mb-4">
+                <span class="page-kicker">ĐĂNG KÝ CUSTOMER</span>
+                <h1 class="mb-2">Tạo tài khoản</h1>
+                <p class="text-muted mb-0">Điền thông tin bên dưới để tham gia PET Shop.</p>
+            </div>
+
+            <form method="post" novalidate>
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label asp-for="FullName" class="form-label">Họ và tên</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input asp-for="FullName" class="form-control" placeholder="Nguyễn Văn A" autocomplete="name" />
+                        </div>
+                        <span asp-validation-for="FullName" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <label asp-for="Email" class="form-label">Email</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                            <input asp-for="Email" class="form-control" placeholder="name@example.com" autocomplete="email" />
+                        </div>
+                        <span asp-validation-for="Email" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <label asp-for="Password" class="form-label">Mật khẩu</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            <input asp-for="Password" type="password" class="form-control" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password" />
+                        </div>
+                        <span asp-validation-for="Password" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-5">
+                        <label asp-for="Phone" class="form-label">Số điện thoại</label>
+                        <input asp-for="Phone" class="form-control" placeholder="09xxxxxxxx" autocomplete="tel" />
+                    </div>
+
+                    <div class="col-md-7">
+                        <label asp-for="Address" class="form-label">Địa chỉ</label>
+                        <input asp-for="Address" class="form-control" placeholder="Địa chỉ nhận hàng" autocomplete="street-address" />
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-warning btn-submit w-100 mt-4">
+                    Tạo tài khoản <i class="bi bi-person-check ms-2"></i>
+                </button>
+
+                <p class="text-center text-muted mt-4 mb-0">
+                    Đã có tài khoản?
+                    <a asp-action="Login" class="fw-bold text-decoration-none">Đăng nhập</a>
+                </p>
+            </form>
+        </div>
+    </div>
+</section>
