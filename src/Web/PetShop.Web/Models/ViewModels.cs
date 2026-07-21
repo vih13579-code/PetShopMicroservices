@@ -19,8 +19,8 @@ public class RegisterVm
 public sealed record UserVm(Guid Id, string FullName, string Email, string? Phone, string? Address,
     bool IsActive, DateTime CreatedAt, IReadOnlyCollection<string> Roles)
 {
-    public bool IsInRole(string role) => Roles != null && Roles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
-    public bool HasAnyRole(params string[] roles) => Roles != null && roles.Any(r => IsInRole(r));
+    public bool IsInRole(string role) => Roles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
+    public bool HasAnyRole(params string[] roles) => roles.Any(IsInRole);
     public bool IsAdmin => IsInRole("Admin");
     public bool IsStaff => IsInRole("Staff");
     public bool IsShopOwner => IsInRole("ShopOwner");
@@ -60,18 +60,47 @@ public sealed class ShopRequestFormVm
     [Required] public string Address { get; set; } = string.Empty;
     public string? TaxCode { get; set; }
 }
-public sealed class CategoryFormVm { [Required] public string Name { get; set; } = string.Empty; public string? Description { get; set; } }
-public sealed class VariantFormVm
+public sealed class CategoryFormVm
 {
+<<<<<<< HEAD
     public string? Name { get; set; }
     public string? Sku { get; set; }
     public decimal AdditionalPrice { get; set; } = 0;
+=======
+    public Guid Id { get; set; }
+    [Required(ErrorMessage = "Vui lòng nhập tên danh mục."), StringLength(150, MinimumLength = 2, ErrorMessage = "Tên danh mục phải từ 2 đến 150 ký tự.")]
+    [Display(Name = "Tên danh mục")]
+    public string Name { get; set; } = string.Empty;
+    [StringLength(500, ErrorMessage = "Mô tả không được vượt quá 500 ký tự.")]
+    [Display(Name = "Mô tả")]
+    public string? Description { get; set; }
+    [Display(Name = "Đang hoạt động")]
+>>>>>>> origin/ThinhNPCE170008_Features_CatalogManagement
     public bool IsActive { get; set; } = true;
 }
 
-public sealed class ProductFormVm
+public sealed class VariantFormVm : IValidatableObject
+{
+    public Guid? Id { get; set; }
+    [Required(ErrorMessage = "Vui lòng nhập tên phân loại."), StringLength(150)]
+    public string Name { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Vui lòng nhập SKU."), StringLength(80)]
+    public string Sku { get; set; } = string.Empty;
+    [Range(0, 1_000_000_000, ErrorMessage = "Giá cộng thêm phải từ 0 đến 1.000.000.000 đồng.")]
+    public decimal AdditionalPrice { get; set; }
+    public bool IsActive { get; set; } = true;
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (AdditionalPrice != decimal.Truncate(AdditionalPrice))
+            yield return new ValidationResult("Giá cộng thêm phải là số nguyên theo đơn vị đồng.", [nameof(AdditionalPrice)]);
+    }
+}
+
+public sealed class ProductFormVm : IValidatableObject
 {
     public Guid Id { get; set; }
+<<<<<<< HEAD
     [Required] public Guid CategoryId { get; set; }
     [Required] public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
@@ -80,8 +109,40 @@ public sealed class ProductFormVm
     [Range(0, 99999, ErrorMessage = "Số lượng ban đầu phải từ 0 đến 99.999.")]
     public int InitialQuantity { get; set; }
     public string? ImageUrl { get; set; }
+=======
+    [Required(ErrorMessage = "Vui lòng chọn danh mục."), Display(Name = "Danh mục")] public Guid CategoryId { get; set; }
+    [Required(ErrorMessage = "Vui lòng nhập tên sản phẩm."), StringLength(220, MinimumLength = 2), Display(Name = "Tên sản phẩm")] public string Name { get; set; } = string.Empty;
+    [StringLength(3000), Display(Name = "Mô tả")] public string? Description { get; set; }
+    [Range(1, 1_000_000_000, ErrorMessage = "Giá bán phải từ 1 đến 1.000.000.000 đồng."), Display(Name = "Giá bán")] public decimal Price { get; set; }
+    [Url(ErrorMessage = "URL hình ảnh không hợp lệ."), StringLength(1000), Display(Name = "Ảnh sản phẩm")] public string? ImageUrl { get; set; }
+>>>>>>> origin/ThinhNPCE170008_Features_CatalogManagement
     public bool IsActive { get; set; } = true;
-    public List<VariantFormVm> Variants { get; set; } = new();
+    public List<VariantFormVm> Variants { get; set; } = [];
+    public List<Guid> RemovedVariantIds { get; set; } = [];
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (Price != decimal.Truncate(Price))
+            yield return new ValidationResult("Giá bán phải là số nguyên theo đơn vị đồng.", [nameof(Price)]);
+        var duplicateSkus = Variants.Where(x => !string.IsNullOrWhiteSpace(x.Sku))
+            .GroupBy(x => x.Sku.Trim(), StringComparer.OrdinalIgnoreCase).Any(x => x.Count() > 1);
+        if (duplicateSkus) yield return new ValidationResult("SKU của các phân loại không được trùng nhau.", [nameof(Variants)]);
+    }
+}
+
+public sealed record OwnerCategoriesPageVm(IReadOnlyCollection<CategoryVm> Items, CategoryFormVm Form);
+public sealed record OwnerProductsPageVm(PagedVm<ProductVm> Result, IReadOnlyCollection<CategoryVm> Categories,
+    string? Keyword, Guid? CategoryId, bool? IsActive);
+public sealed record PublicShopVm(Guid Id, string Name);
+public sealed record CatalogPageVm(PagedVm<ProductVm> Result, IReadOnlyCollection<CategoryVm> Categories,
+    IReadOnlyCollection<PublicShopVm> Shops, string? Keyword, Guid? ShopId, Guid? CategoryId,
+    decimal? MinPrice, decimal? MaxPrice);
+public sealed record ProductDetailsPageVm(ProductVm Product, IReadOnlyCollection<ReviewVm> Reviews, ReviewFormVm ReviewForm);
+public sealed record ReviewVm(Guid Id, Guid ProductId, Guid UserId, int Rating, string? Comment, DateTime CreatedAt, DateTime? UpdatedAt);
+public sealed class ReviewFormVm
+{
+    [Range(1, 5, ErrorMessage = "Vui lòng chọn từ 1 đến 5 sao.")] public int Rating { get; set; } = 5;
+    [StringLength(2000, ErrorMessage = "Nội dung không được vượt quá 2000 ký tự.")] public string? Comment { get; set; }
 }
 public sealed class CheckoutVm
 {
@@ -131,6 +192,3 @@ public sealed record RevenueReportVm(
     public int CompletedOrders => Completed;
     public int CancelledOrders => Cancelled;
 }
-
-public sealed record ReviewVm(Guid Id, Guid ProductId, Guid UserId, int Rating, string? Comment, DateTime CreatedAt, DateTime? UpdatedAt);
-

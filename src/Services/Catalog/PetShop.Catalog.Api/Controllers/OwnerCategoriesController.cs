@@ -28,7 +28,7 @@ public sealed class OwnerCategoriesController(CatalogDbContext db, ShopClient sh
         var shop = await RequiredShopAsync();
         if (await db.Categories.AnyAsync(x => x.ShopId == shop.Id && x.Name == request.Name.Trim()))
             return Conflict(new { message = "Tên danh mục đã tồn tại trong Shop." });
-        var entity = new Category { ShopId = shop.Id, Name = request.Name.Trim(), Description = request.Description?.Trim() };
+        var entity = new Category { ShopId = shop.Id, Name = request.Name.Trim(), Description = request.Description?.Trim(), IsActive = request.IsActive };
         db.Categories.Add(entity); await db.SaveChangesAsync();
         return CreatedAtAction(nameof(GetAll), PublicCatalogController.Map(entity));
     }
@@ -41,7 +41,7 @@ public sealed class OwnerCategoriesController(CatalogDbContext db, ShopClient sh
         if (entity is null) return NotFound();
         if (await db.Categories.AnyAsync(x => x.ShopId == shop.Id && x.Name == request.Name.Trim() && x.Id != id))
             return Conflict(new { message = "Tên danh mục đã tồn tại." });
-        entity.Name = request.Name.Trim(); entity.Description = request.Description?.Trim();
+        entity.Name = request.Name.Trim(); entity.Description = request.Description?.Trim(); entity.IsActive = request.IsActive;
         await db.SaveChangesAsync(); return Ok(PublicCatalogController.Map(entity));
     }
 
@@ -51,8 +51,8 @@ public sealed class OwnerCategoriesController(CatalogDbContext db, ShopClient sh
         var shop = await RequiredShopAsync();
         var entity = await db.Categories.SingleOrDefaultAsync(x => x.Id == id && x.ShopId == shop.Id);
         if (entity is null) return NotFound();
-        if (await db.Products.AnyAsync(x => x.CategoryId == id && x.IsActive))
-            return Conflict(new { message = "Không thể xóa danh mục đang chứa sản phẩm hoạt động." });
+        if (await db.Products.AnyAsync(x => x.CategoryId == id))
+            return Conflict(new { message = "Không thể xóa danh mục đã chứa sản phẩm. Bạn có thể chuyển danh mục sang trạng thái ẩn." });
         db.Categories.Remove(entity); await db.SaveChangesAsync(); return NoContent();
     }
 
