@@ -15,7 +15,7 @@
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-4">
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             <div asp-validation-summary="All" class="text-danger mb-3"></div>
             <input type="hidden" asp-for="Id" />
 
@@ -43,8 +43,9 @@
                     <span asp-validation-for="Price" class="text-danger"></span>
                 </div>
                 <div class="col-md-6">
-                    <label asp-for="ImageUrl" class="form-label fw-semibold">Hình ảnh (URL)</label>
-                    <input asp-for="ImageUrl" class="form-control" />
+                    <label asp-for="ImageFile" class="form-label fw-semibold">Thay hình ảnh</label>
+                    <input asp-for="ImageFile" class="form-control" accept="image/png,image/jpeg,image/webp" />
+                    <div class="form-text">Để trống nếu muốn giữ ảnh hiện tại.</div>
                 </div>
                 <div class="col-12">
                     <div class="form-check">

@@ -1,2 +1,56 @@
 @model LoginVm
-@{ViewData["Title"]="Đăng nhập";}<h2>Đăng nhập</h2><form method="post" class="col-md-5"><div asp-validation-summary="All" class="text-danger"></div><label asp-for="Email"></label><input asp-for="Email" class="form-control mb-2"/><label asp-for="Password"></label><input asp-for="Password" type="password" class="form-control mb-3"/><button class="btn btn-primary">Đăng nhập</button> <a asp-action="Register">Đăng ký</a></form>
+@{
+    ViewData["Title"] = "Đăng nhập";
+}
+
+<section class="auth-page">
+    <div class="auth-shell">
+        <div class="auth-visual">
+            <div>
+                <span class="page-kicker text-warning">PET SHOP COMMUNITY</span>
+                <h2>Chào mừng bạn quay trở lại</h2>
+                <p>Đăng nhập để tiếp tục mua sắm, theo dõi đơn hàng và quản lý không gian làm việc của bạn.</p>
+            </div>
+            <div class="auth-pet">🐶</div>
+        </div>
+
+        <div class="auth-form">
+            <div class="mb-4">
+                <span class="page-kicker">TÀI KHOẢN</span>
+                <h1 class="mb-2">Đăng nhập</h1>
+                <p class="text-muted mb-0">Nhập email và mật khẩu đã đăng ký.</p>
+            </div>
+
+            <form method="post" novalidate>
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                <div class="mb-3">
+                    <label asp-for="Email" class="form-label">Email</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                        <input asp-for="Email" class="form-control" placeholder="name@example.com" autocomplete="email" />
+                    </div>
+                    <span asp-validation-for="Email" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="Password" class="form-label">Mật khẩu</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        <input asp-for="Password" type="password" class="form-control" placeholder="Nhập mật khẩu" autocomplete="current-password" />
+                    </div>
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+
+                <button type="submit" class="btn btn-warning btn-submit w-100">
+                    Đăng nhập <i class="bi bi-arrow-right ms-2"></i>
+                </button>
+
+                <p class="text-center text-muted mt-4 mb-0">
+                    Chưa có tài khoản?
+                    <a asp-action="Register" class="fw-bold text-decoration-none">Đăng ký ngay</a>
+                </p>
+            </form>
+        </div>
+    </div>
+</section>

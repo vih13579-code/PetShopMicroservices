@@ -1,2 +1,82 @@
 @model StaffFormVm
-@{ViewData["Title"]="Tạo Staff";}<h2>Tạo tài khoản Staff</h2><form method="post" class="col-md-6"><div asp-validation-summary="All" class="text-danger"></div><label>Họ tên</label><input asp-for="FullName" class="form-control mb-2"/><label>Email</label><input asp-for="Email" class="form-control mb-2"/><label>Mật khẩu</label><input asp-for="Password" type="password" class="form-control mb-2"/><label>Điện thoại</label><input asp-for="Phone" class="form-control mb-2"/><label>Địa chỉ</label><textarea asp-for="Address" class="form-control mb-2"></textarea><button class="btn btn-success">Tạo Staff</button></form>
+@{
+    ViewData["Title"] = "Tạo Staff";
+}
+
+<div class="page-header">
+    <div>
+        <span class="page-kicker">QUẢN TRỊ TÀI KHOẢN</span>
+        <h1 class="page-heading">Tạo tài khoản Staff</h1>
+        <p class="page-subtitle">Cấp tài khoản nhân viên để duyệt yêu cầu mở shop và hỗ trợ vận hành hệ thống.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại danh sách
+    </a>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-header d-flex align-items-center gap-3">
+                <div class="icon-tile"><i class="bi bi-person-plus"></i></div>
+                <div>
+                    <h5 class="mb-1">Thông tin nhân viên</h5>
+                    <p class="text-muted small mb-0">Các trường có dấu bắt buộc cần được nhập đầy đủ.</p>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="FullName" class="form-label">Họ và tên</label>
+                            <input asp-for="FullName" class="form-control" placeholder="Nhập họ và tên" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Email" class="form-label">Email</label>
+                            <input asp-for="Email" class="form-control" placeholder="staff@petshop.com" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Password" class="form-label">Mật khẩu</label>
+                            <input asp-for="Password" type="password" class="form-control" placeholder="Tối thiểu 6 ký tự" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Phone" class="form-label">Điện thoại</label>
+                            <input asp-for="Phone" class="form-control" placeholder="09xxxxxxxx" />
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Address" class="form-label">Địa chỉ</label>
+                            <textarea asp-for="Address" class="form-control" rows="3" placeholder="Nhập địa chỉ"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Vai trò</label>
+                            <select name="Roles" class="form-select" required>
+                                <option value="">-- Chọn một role --</option>
+                                <option value="Staff" selected="@(Model.Roles.Contains("Staff"))">Staff</option>
+                                <option value="Customer" selected="@(Model.Roles.Contains("Customer"))">Customer</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 mt-4">
+                        <button type="submit" class="btn btn-warning px-4">
+                            <i class="bi bi-person-check me-1"></i>Tạo tài khoản
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Hủy</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="soft-panel h-100">
+            <div class="icon-tile mb-3"><i class="bi bi-shield-check"></i></div>
+            <h5>Quyền của Staff</h5>
+            <p class="text-muted">Staff có thể xử lý yêu cầu mở shop và theo dõi trạng thái cửa hàng theo phân quyền hiện tại.</p>
+            <hr />
+            <small class="text-muted">Không cấp role Admin cho tài khoản tạo từ màn hình này.</small>
+        </div>
+    </div>
+</div>

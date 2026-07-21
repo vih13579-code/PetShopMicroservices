@@ -42,5 +42,20 @@
             </button>
             <a asp-action="Index" class="btn btn-outline-secondary">Hủy</a>
         </form>
+        @if (!Model.Roles.Contains("Admin"))
+        {
+            <hr />
+            <form method="post" asp-action="Roles" asp-route-id="@Model.Id">
+                <label class="form-label fw-semibold" for="role">Role</label>
+                <select id="role" name="roles" class="form-select mb-3" required>
+                    <option value="">-- Chọn một role --</option>
+                    @foreach (var role in Model.EditableRoles)
+                    {
+                        <option value="@role" selected="@(Model.Roles.Contains(role))">@role</option>
+                    }
+                </select>
+                <button type="submit" class="btn btn-outline-primary">Cập nhật role</button>
+            </form>
+        }
     </div>
 </div>

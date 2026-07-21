@@ -1,2 +1,94 @@
 @model CheckoutVm
-@{ViewData["Title"]="Đặt hàng";}<h2>Thông tin nhận hàng</h2><form method="post" class="col-md-6"><div asp-validation-summary="All" class="text-danger"></div><label asp-for="ReceiverName"></label><input asp-for="ReceiverName" class="form-control mb-2"/><label asp-for="ReceiverPhone"></label><input asp-for="ReceiverPhone" class="form-control mb-2"/><label asp-for="ShippingAddress"></label><textarea asp-for="ShippingAddress" class="form-control mb-2"></textarea><label asp-for="Note"></label><textarea asp-for="Note" class="form-control mb-2"></textarea><label>Phí giao hàng mỗi Shop</label><input asp-for="ShippingFeePerShop" class="form-control mb-2"/><label>Thanh toán</label><select asp-for="PaymentMethod" class="form-select mb-3"><option value="COD">COD</option><option value="BankTransferMock">Chuyển khoản mô phỏng</option></select><button class="btn btn-success">Đặt hàng</button></form>
+@{
+    ViewData["Title"] = "Đặt hàng";
+}
+
+<div class="page-header">
+    <div>
+        <span class="page-kicker">HOÀN TẤT ĐƠN HÀNG</span>
+        <h1 class="page-heading">Thông tin nhận hàng</h1>
+        <p class="page-subtitle">Kiểm tra chính xác người nhận, địa chỉ giao hàng và phương thức thanh toán trước khi đặt đơn.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại giỏ hàng
+    </a>
+</div>
+
+<form method="post" novalidate>
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex align-items-center gap-3">
+                    <div class="icon-tile"><i class="bi bi-geo-alt"></i></div>
+                    <div>
+                        <h5 class="mb-1">Địa chỉ giao hàng</h5>
+                        <p class="small text-muted mb-0">Thông tin này sẽ được sử dụng cho tất cả đơn tách theo shop.</p>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="ReceiverName" class="form-label">Tên người nhận</label>
+                            <input asp-for="ReceiverName" class="form-control" placeholder="Nhập tên người nhận" />
+                            <span asp-validation-for="ReceiverName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ReceiverPhone" class="form-label">Số điện thoại</label>
+                            <input asp-for="ReceiverPhone" class="form-control" placeholder="09xxxxxxxx" />
+                            <span asp-validation-for="ReceiverPhone" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="ShippingAddress" class="form-label">Địa chỉ nhận hàng</label>
+                            <textarea asp-for="ShippingAddress" class="form-control" rows="3" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"></textarea>
+                            <span asp-validation-for="ShippingAddress" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Note" class="form-label">Ghi chú đơn hàng</label>
+                            <textarea asp-for="Note" class="form-control" rows="3" placeholder="Ví dụ: Giao giờ hành chính, gọi trước khi giao..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card position-sticky" style="top: 1.5rem;">
+                <div class="card-header d-flex align-items-center gap-3">
+                    <div class="icon-tile"><i class="bi bi-credit-card"></i></div>
+                    <h5 class="mb-0">Thanh toán</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="ShippingFeePerShop" class="form-label">Phí giao hàng mỗi shop</label>
+                        <div class="input-group">
+                            <input asp-for="ShippingFeePerShop" class="form-control" />
+                            <span class="input-group-text">VNĐ</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="PaymentMethod" class="form-label">Phương thức thanh toán</label>
+                        <select asp-for="PaymentMethod" class="form-select">
+                            <option value="COD">Thanh toán khi nhận hàng (COD)</option>
+                            <option value="BankTransferMock">Chuyển khoản mô phỏng</option>
+                        </select>
+                    </div>
+
+                    <div class="checkout-note mb-4">
+                        <i class="bi bi-shield-check fs-5 text-success"></i>
+                        <div>
+                            <strong class="d-block text-dark mb-1">Đặt hàng an toàn</strong>
+                            <small>Đơn có sản phẩm từ nhiều shop sẽ được tự động tách riêng.</small>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-warning btn-lg w-100">
+                        <i class="bi bi-bag-check me-2"></i>Xác nhận đặt hàng
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>

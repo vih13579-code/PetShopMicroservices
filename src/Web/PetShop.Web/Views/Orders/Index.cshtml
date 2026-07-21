@@ -1,2 +1,92 @@
 @model IReadOnlyCollection<OrderVm>
-@{ViewData["Title"]="Đơn hàng";}<h2>Đơn hàng của tôi</h2>@if(ViewBag.Error!=null){<div class="alert alert-danger">@ViewBag.Error</div>}<table class="table"><thead><tr><th>Mã</th><th>Shop</th><th>Tổng</th><th>Trạng thái</th><th>Thanh toán</th><th></th></tr></thead><tbody>@foreach(var o in Model){<tr><td>@o.OrderCode</td><td>@o.ShopId</td><td>@o.TotalAmount.ToString("N0")</td><td>@o.Status</td><td>@o.PaymentStatus</td><td><a asp-action="Details" asp-route-id="@o.Id">Chi tiết</a>@if(o.Status=="Pending"){<form asp-action="Cancel" method="post" class="d-inline"><input type="hidden" name="id" value="@o.Id"/><button class="btn btn-sm btn-danger">Hủy</button></form>}</td></tr>}</tbody></table>
+@{
+    ViewData["Title"] = "Đơn hàng";
+}
+
+<div class="page-header">
+    <div>
+        <span class="page-kicker">LỊCH SỬ MUA SẮM</span>
+        <h1 class="page-heading">Đơn hàng của tôi</h1>
+        <p class="page-subtitle">Theo dõi trạng thái xử lý, thanh toán và thông tin của từng đơn hàng.</p>
+    </div>
+    <a asp-controller="Catalog" asp-action="Index" class="btn btn-warning">
+        <i class="bi bi-bag-plus me-1"></i>Tiếp tục mua sắm
+    </a>
+</div>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>@ViewBag.Error</div>
+}
+
+@if (Model == null || !Model.Any())
+{
+    <div class="empty-state text-center">
+        <i class="bi bi-bag-x"></i>
+        <h4>Bạn chưa có đơn hàng</h4>
+        <p class="mb-4">Khám phá các sản phẩm nổi bật và tạo đơn hàng đầu tiên.</p>
+        <a asp-controller="Catalog" asp-action="Index" class="btn btn-warning">Khám phá sản phẩm</a>
+    </div>
+}
+else
+{
+    <div class="table-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Mã đơn</th>
+                        <th>Ngày đặt</th>
+                        <th>Shop</th>
+                        <th>Tổng tiền</th>
+                        <th>Trạng thái</th>
+                        <th>Thanh toán</th>
+                        <th class="text-end pe-4">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in Model)
+                    {
+                        var orderStatusClass = order.Status switch
+                        {
+                            "Completed" or "Delivered" => "status-success",
+                            "Cancelled" => "status-danger",
+                            "Pending" => "status-pending",
+                            _ => "status-info"
+                        };
+                        var paymentStatusClass = order.PaymentStatus switch
+                        {
+                            "Paid" or "Completed" => "status-success",
+                            "Failed" or "Refunded" => "status-danger",
+                            _ => "status-pending"
+                        };
+                        <tr>
+                            <td class="ps-4">
+                                <a asp-action="Details" asp-route-id="@order.Id" class="fw-bold text-decoration-none text-dark">@order.OrderCode</a>
+                            </td>
+                            <td class="text-muted">@order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td><code>@order.ShopId.ToString()[..8]</code></td>
+                            <td class="fw-bold text-danger">@order.TotalAmount.ToString("N0") VNĐ</td>
+                            <td><span class="status-pill @orderStatusClass">@order.Status</span></td>
+                            <td><span class="status-pill @paymentStatusClass">@order.PaymentStatus</span></td>
+                            <td class="text-end pe-4">
+                                <a asp-action="Details" asp-route-id="@order.Id" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye me-1"></i>Chi tiết
+                                </a>
+                                @if (order.Status == "Pending")
+                                {
+                                    <form asp-action="Cancel" method="post" class="d-inline">
+                                        <input type="hidden" name="id" value="@order.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bạn có chắc muốn hủy đơn hàng này?');">
+                                            <i class="bi bi-x-circle me-1"></i>Hủy
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

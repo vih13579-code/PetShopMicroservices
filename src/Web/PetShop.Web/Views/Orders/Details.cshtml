@@ -1,4 +1,141 @@
 @model OrderVm
-@{ViewData["Title"]="Chi tiết đơn hàng";var statusClass=Model.Status=="Completed"?"status-success":Model.Status=="Cancelled"?"status-danger":"status-warning";}
-<a asp-action="Index" class="text-decoration-none text-secondary">← Quay lại đơn hàng</a><div class="d-flex justify-content-between align-items-end flex-wrap gap-3 mt-3 mb-4"><div><div class="page-kicker">Chi tiết đơn hàng</div><h1 class="page-title">@Model.OrderCode</h1><p class="page-subtitle">Đặt lúc @Model.CreatedAt.ToLocalTime().ToString("HH:mm, dd/MM/yyyy")</p></div><span class="status-pill @statusClass">@Model.Status</span></div>
-<div class="row g-4"><div class="col-lg-8"><div class="surface table-card"><div class="p-4 border-bottom"><h5 class="fw-bold mb-0">Sản phẩm</h5></div><table class="table"><tbody>@foreach(var i in Model.Items){<tr><td><div class="fw-bold">@i.ProductName</div><small class="text-muted">@(i.VariantName??"Mặc định")</small></td><td>x @i.Quantity</td><td class="money text-end">@i.LineTotal.ToString("N0") ₫</td></tr>}</tbody></table><div class="p-4"><div class="d-flex justify-content-between text-secondary mb-2"><span>Tạm tính</span><span>@Model.SubTotal.ToString("N0") ₫</span></div><div class="d-flex justify-content-between text-secondary mb-3"><span>Phí giao hàng</span><span>@Model.ShippingFee.ToString("N0") ₫</span></div><div class="d-flex justify-content-between fs-4 fw-bold border-top pt-3"><span>Tổng cộng</span><span class="text-success">@Model.TotalAmount.ToString("N0") ₫</span></div></div></div></div><div class="col-lg-4"><div class="surface p-4 mb-3"><h5 class="fw-bold">Thông tin nhận hàng</h5><p class="mb-1 fw-bold">@Model.ReceiverName</p><p class="text-secondary mb-1">@Model.ReceiverPhone</p><p class="text-secondary mb-0">@Model.ShippingAddress</p>@if(!string.IsNullOrWhiteSpace(Model.Note)){<hr/><small class="text-muted">Ghi chú: @Model.Note</small>}</div><div class="surface p-4"><h5 class="fw-bold">Thanh toán</h5><div class="d-flex justify-content-between mb-3"><span>@Model.PaymentMethod</span><span class="status-pill">@Model.PaymentStatus</span></div>@if(Model.PaymentStatus is "Pending" or "CodPending"){<div class="d-grid gap-2"><form asp-controller="Payments" asp-action="Create" method="post"><input type="hidden" name="orderId" value="@Model.Id"/><input type="hidden" name="method" value="COD"/><button class="btn btn-outline-secondary w-100">Thanh toán COD</button></form><form asp-controller="Payments" asp-action="Create" method="post"><input type="hidden" name="orderId" value="@Model.Id"/><input type="hidden" name="method" value="BankTransferMock"/><button class="btn btn-brand w-100">Chuyển khoản mô phỏng</button></form></div>}</div></div></div>
+@{
+    ViewData["Title"] = "Chi tiết đơn";
+    var orderStatusClass = Model.Status switch
+    {
+        "Completed" or "Delivered" => "status-success",
+        "Cancelled" => "status-danger",
+        "Pending" => "status-pending",
+        _ => "status-info"
+    };
+    var paymentStatusClass = Model.PaymentStatus switch
+    {
+        "Paid" or "Completed" => "status-success",
+        "Failed" or "Refunded" => "status-danger",
+        _ => "status-pending"
+    };
+}
+
+<div class="page-header">
+    <div>
+        <span class="page-kicker">CHI TIẾT ĐƠN HÀNG</span>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <h1 class="page-heading">@Model.OrderCode</h1>
+            <span class="status-pill @orderStatusClass">@Model.Status</span>
+        </div>
+        <p class="page-subtitle">Đặt lúc @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Danh sách đơn hàng
+    </a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center gap-3">
+                <div class="icon-tile"><i class="bi bi-box-seam"></i></div>
+                <div>
+                    <h5 class="mb-1">Sản phẩm trong đơn</h5>
+                    <p class="small text-muted mb-0">@Model.Items.Count sản phẩm/phân loại</p>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Sản phẩm</th>
+                            <th>Đơn giá</th>
+                            <th>Số lượng</th>
+                            <th class="text-end pe-4">Thành tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="icon-tile">
+                                            @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                                            {
+                                                <img src="@item.ImageUrl" alt="@item.ProductName" class="w-100 h-100 rounded-3" style="object-fit:cover;" />
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-image"></i>
+                                            }
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">@item.ProductName</div>
+                                            @if (!string.IsNullOrWhiteSpace(item.VariantName))
+                                            {
+                                                <small class="text-muted">Phân loại: @item.VariantName</small>
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>@item.UnitPrice.ToString("N0") VNĐ</td>
+                                <td>x@item.Quantity</td>
+                                <td class="text-end pe-4 fw-bold">@item.LineTotal.ToString("N0") VNĐ</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-truck me-2 text-warning"></i>Thông tin giao hàng</h5></div>
+            <div class="card-body">
+                <div class="info-grid">
+                    <div class="info-item"><small>Người nhận</small><strong>@Model.ReceiverName</strong></div>
+                    <div class="info-item"><small>Số điện thoại</small><strong>@Model.ReceiverPhone</strong></div>
+                    <div class="info-item" style="grid-column: 1 / -1;"><small>Địa chỉ</small><strong>@Model.ShippingAddress</strong></div>
+                    @if (!string.IsNullOrWhiteSpace(Model.Note))
+                    {
+                        <div class="info-item" style="grid-column: 1 / -1;"><small>Ghi chú</small><span>@Model.Note</span></div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card position-sticky" style="top: 1.5rem;">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-receipt me-2 text-warning"></i>Tóm tắt thanh toán</h5></div>
+            <div class="card-body">
+                <div class="summary-row"><span class="text-muted">Tiền hàng</span><strong>@Model.SubTotal.ToString("N0") VNĐ</strong></div>
+                <div class="summary-row"><span class="text-muted">Phí giao hàng</span><strong>@Model.ShippingFee.ToString("N0") VNĐ</strong></div>
+                <div class="summary-row fs-5"><span>Tổng cộng</span><strong class="text-danger">@Model.TotalAmount.ToString("N0") VNĐ</strong></div>
+
+                <div class="soft-panel mt-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted">Phương thức</span>
+                        <strong>@Model.PaymentMethod</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted">Trạng thái</span>
+                        <span class="status-pill @paymentStatusClass">@Model.PaymentStatus</span>
+                    </div>
+                </div>
+
+                @if (Model.PaymentStatus == "Pending" || Model.PaymentStatus == "CodPending")
+                {
+                    <div class="d-grid gap-2 mt-4">
+                        <form asp-controller="Payments" asp-action="Create" method="post">
+                            <input type="hidden" name="orderId" value="@Model.Id" />
+                            <input type="hidden" name="method" value="COD" />
+                            <button class="btn btn-outline-secondary w-100"><i class="bi bi-cash me-2"></i>Thanh toán COD</button>
+                        </form>
+                        <form asp-controller="Payments" asp-action="Create" method="post">
+                            <input type="hidden" name="orderId" value="@Model.Id" />
+                            <input type="hidden" name="method" value="BankTransferMock" />
+                            <button class="btn btn-warning w-100"><i class="bi bi-bank me-2"></i>Chuyển khoản mô phỏng</button>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
