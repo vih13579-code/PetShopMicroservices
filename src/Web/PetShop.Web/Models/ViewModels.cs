@@ -63,8 +63,8 @@ public sealed class ShopRequestFormVm
 public sealed class CategoryFormVm { [Required] public string Name { get; set; } = string.Empty; public string? Description { get; set; } }
 public sealed class VariantFormVm
 {
-    [Required] public string Name { get; set; } = "Mặc định";
-    [Required] public string Sku { get; set; } = string.Empty;
+    public string? Name { get; set; }
+    public string? Sku { get; set; }
     public decimal AdditionalPrice { get; set; } = 0;
     public bool IsActive { get; set; } = true;
 }
@@ -75,7 +75,10 @@ public sealed class ProductFormVm
     [Required] public Guid CategoryId { get; set; }
     [Required] public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
-    [Range(0.01, double.MaxValue)] public decimal Price { get; set; }
+    [Range(typeof(decimal), "1", "1000000000", ErrorMessage = "Giá bán phải từ 1 đến 1.000.000.000 VNĐ.")]
+    public decimal Price { get; set; }
+    [Range(0, 99999, ErrorMessage = "Số lượng ban đầu phải từ 0 đến 99.999.")]
+    public int InitialQuantity { get; set; }
     public string? ImageUrl { get; set; }
     public bool IsActive { get; set; } = true;
     public List<VariantFormVm> Variants { get; set; } = new();

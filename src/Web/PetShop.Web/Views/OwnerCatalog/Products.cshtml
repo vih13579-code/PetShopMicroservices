@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = "Quản lý Sản phẩm";
     var categories = (IReadOnlyCollection<CategoryVm>)(ViewBag.Categories ?? Array.Empty<CategoryVm>());
+    var inventory = (IReadOnlyCollection<InventoryVm>)(ViewBag.Inventory ?? Array.Empty<InventoryVm>());
+    var stockByProduct = inventory.ToDictionary(x => x.ProductId);
     var currentCategoryId = ViewBag.CategoryId as Guid?;
     var currentIsActive = ViewBag.IsActive as bool?;
 }
@@ -71,6 +73,7 @@
                         <th class="ps-3">Sản phẩm</th>
                         <th>Danh mục</th>
                         <th>Giá bán</th>
+                        <th>Tồn kho</th>
                         <th>Phân loại (Variants)</th>
                         <th>Trạng thái</th>
                         <th class="text-end pe-3">Thao tác</th>
@@ -80,7 +83,7 @@
                     @if (Model == null || !Model.Any())
                     {
                         <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">Không tìm thấy sản phẩm nào.</td>
+                            <td colspan="7" class="text-center py-4 text-muted">Không tìm thấy sản phẩm nào.</td>
                         </tr>
                     }
                     else
@@ -109,6 +112,17 @@
                                 <td><span class="badge bg-light text-dark border">@p.CategoryName</span></td>
                                 <td class="fw-bold text-danger">@p.Price.ToString("N0") VNĐ</td>
                                 <td>
+                                    @if (stockByProduct.TryGetValue(p.Id, out var stock))
+                                    {
+                                        <div class="fw-bold">@stock.Quantity</div>
+                                        <small class="text-muted">Bán được: @stock.AvailableQuantity · Đang giữ: @stock.ReservedQuantity</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Chưa thiết lập</span>
+                                    }
+                                </td>
+                                <td>
                                     <span class="badge bg-info bg-opacity-10 text-info">@p.Variants.Count() phân loại</span>
                                 </td>
                                 <td>
@@ -124,6 +138,9 @@
                                         <a asp-action="EditProduct" asp-route-id="@p.Id" class="btn btn-outline-warning" title="Chỉnh sửa">
                                             <i class="bi bi-pencil"></i>
                                         </a>
+                                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#stock-@p.Id" title="Cập nhật số lượng">
+                                            <i class="bi bi-boxes"></i>
+                                        </button>
                                         @if (p.IsActive)
                                         {
                                             <form asp-action="DeleteProduct" method="post" class="d-inline">
@@ -133,6 +150,25 @@
                                                 </button>
                                             </form>
                                         }
+                                    </div>
+                                    <div class="modal fade text-start" id="stock-@p.Id" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content border-0 shadow">
+                                                <form asp-action="UpdateStock" method="post">
+                                                    <div class="modal-header"><h5 class="modal-title fw-bold">Cập nhật số lượng</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                                                    <div class="modal-body">
+                                                        <input type="hidden" name="productId" value="@p.Id"/>
+                                                        <p>Sản phẩm: <strong>@p.Name</strong></p>
+                                                        <label class="form-label fw-semibold">Tổng số lượng trong kho</label>
+                                                        <input name="quantity" type="number" min="0" max="99999" step="1" value="@(stockByProduct.TryGetValue(p.Id, out var currentStock) ? currentStock.Quantity : 0)" class="form-control" required/>
+                                                        <div class="form-text">Không thể đặt thấp hơn số lượng hàng đang được giữ.</div>
+                                                        <label class="form-label fw-semibold mt-3">Lý do</label>
+                                                        <input name="reason" class="form-control" placeholder="Ví dụ: nhập thêm hàng, kiểm kê..."/>
+                                                    </div>
+                                                    <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Đóng</button><button class="btn btn-primary">Lưu số lượng</button></div>
+                                                </form>
+                                            </div>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>

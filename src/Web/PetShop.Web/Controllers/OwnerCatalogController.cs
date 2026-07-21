@@ -62,6 +62,8 @@ public sealed class OwnerCatalogController(GatewayApiClient api) : Controller
 
         var categories = await api.GetAsync<IReadOnlyCollection<CategoryVm>>("api/owner/catalog/categories");
         ViewBag.Categories = categories.Data ?? [];
+        var inventory = await api.GetAsync<IReadOnlyCollection<InventoryVm>>("api/inventory/owner");
+        ViewBag.Inventory = inventory.Data ?? [];
         ViewBag.Keyword = keyword;
         ViewBag.CategoryId = categoryId;
         ViewBag.IsActive = isActive;
@@ -69,6 +71,24 @@ public sealed class OwnerCatalogController(GatewayApiClient api) : Controller
         var result = await api.GetAsync<PagedVm<ProductVm>>(url);
         ViewBag.Error = result.Error;
         return View(result.Data?.Items ?? []);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> UpdateStock(Guid productId, int quantity, string? reason)
+    {
+        var guard = CheckShopOwnerRole(); if (guard != null) return guard;
+        if (productId == Guid.Empty || quantity < 0 || quantity > 99999)
+        {
+            TempData["Error"] = "Sản phẩm hoặc số lượng tồn kho không hợp lệ.";
+            return RedirectToAction("Products");
+        }
+        var result = await api.PutAsync<InventoryVm>("api/inventory/owner/set", new
+        {
+            productId, quantity,
+            reason = string.IsNullOrWhiteSpace(reason) ? "Chủ Shop cập nhật từ danh sách sản phẩm" : reason.Trim()
+        });
+        TempData[result.Success ? "Success" : "Error"] = result.Success ? $"Đã cập nhật tồn kho thành {quantity}." : result.Error;
+        return RedirectToAction("Products");
     }
 
     public async Task<IActionResult> ProductDetails(Guid id)
@@ -88,6 +108,7 @@ public sealed class OwnerCatalogController(GatewayApiClient api) : Controller
         var guard = CheckShopOwnerRole(); if (guard != null) return guard;
         var categories = await api.GetAsync<IReadOnlyCollection<CategoryVm>>("api/owner/catalog/categories");
         ViewBag.Categories = categories.Data ?? [];
+        ViewBag.CategoryError = categories.Success ? null : categories.Error;
         return View(new ProductFormVm());
     }
 
@@ -97,15 +118,33 @@ public sealed class OwnerCatalogController(GatewayApiClient api) : Controller
         var guard = CheckShopOwnerRole(); if (guard != null) return guard;
         var categories = await api.GetAsync<IReadOnlyCollection<CategoryVm>>("api/owner/catalog/categories");
         ViewBag.Categories = categories.Data ?? [];
+        ViewBag.CategoryError = categories.Success ? null : categories.Error;
+        if (model.CategoryId == Guid.Empty)
+            ModelState.AddModelError(nameof(model.CategoryId), "Vui lòng tạo và chọn một danh mục trước khi tạo sản phẩm.");
         if (!ModelState.IsValid) return View(model);
 
-        var variantsPayload = model.Variants != null && model.Variants.Count > 0
-            ? model.Variants.Select(v => new { name = v.Name.Trim(), sku = v.Sku.Trim(), additionalPrice = v.AdditionalPrice, isActive = v.IsActive }).Cast<object>().ToArray()
-            : new object[] { new { name = "Mặc định", sku = $"SKU-{DateTime.UtcNow:yyyyMMddHHmmss}-{Random.Shared.Next(100, 999)}", additionalPrice = 0m, isActive = true } };
+        var enteredVariants = model.Variants?.Where(v => !string.IsNullOrWhiteSpace(v.Name) || !string.IsNullOrWhiteSpace(v.Sku)).ToList() ?? [];
+        var variantsPayload = enteredVariants.Count > 0
+            ? enteredVariants.Select(v => new { name = string.IsNullOrWhiteSpace(v.Name) ? "Mặc định" : v.Name.Trim(), sku = string.IsNullOrWhiteSpace(v.Sku) ? $"SKU-{Guid.NewGuid():N}"[..20] : v.Sku.Trim(), additionalPrice = v.AdditionalPrice, isActive = true }).Cast<object>().ToArray()
+            : new object[] { new { name = "Mặc định", sku = $"SKU-{Guid.NewGuid():N}"[..20], additionalPrice = 0m, isActive = true } };
 
         var r = await api.PostAsync<ProductVm>("api/owner/catalog/products", new { model.CategoryId, model.Name, model.Description, model.Price, model.ImageUrl, model.IsActive, variants = variantsPayload });
         if (!r.Success) { ModelState.AddModelError(string.Empty, r.Error ?? "Không thể tạo sản phẩm."); return View(model); }
-        TempData["Success"] = "Đã tạo sản phẩm mới.";
+        if (r.Data is not null)
+        {
+            var stock = await api.PutAsync<InventoryVm>("api/inventory/owner/set", new
+            {
+                productId = r.Data.Id,
+                quantity = model.InitialQuantity,
+                reason = "Thiết lập tồn kho khi tạo sản phẩm"
+            });
+            if (!stock.Success)
+            {
+                TempData["Error"] = $"Sản phẩm đã được tạo nhưng chưa cập nhật được tồn kho: {stock.Error}";
+                return RedirectToAction("Index", "Inventory");
+            }
+        }
+        TempData["Success"] = $"Đã tạo sản phẩm mới với số lượng ban đầu là {model.InitialQuantity}.";
         return RedirectToAction("Products");
     }
 
@@ -148,7 +187,7 @@ public sealed class OwnerCatalogController(GatewayApiClient api) : Controller
         if (!ModelState.IsValid) return View(model);
 
         var variantsPayload = model.Variants != null && model.Variants.Count > 0
-            ? model.Variants.Select(v => new { name = v.Name.Trim(), sku = v.Sku.Trim(), additionalPrice = v.AdditionalPrice, isActive = v.IsActive }).Cast<object>().ToArray()
+            ? model.Variants.Select(v => new { name = v.Name?.Trim() ?? "Mặc định", sku = v.Sku?.Trim() ?? $"SKU-{Guid.NewGuid():N}"[..20], additionalPrice = v.AdditionalPrice, isActive = v.IsActive }).Cast<object>().ToArray()
             : new object[] { new { name = "Mặc định", sku = $"SKU-{DateTime.UtcNow:yyyyMMddHHmmss}-{Random.Shared.Next(100, 999)}", additionalPrice = 0m, isActive = true } };
 
         var r = await api.PutAsync<ProductVm>($"api/owner/catalog/products/{id}", new { model.CategoryId, model.Name, model.Description, model.Price, model.ImageUrl, model.IsActive, variants = variantsPayload });

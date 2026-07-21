@@ -39,7 +39,8 @@
                 </div>
                 <div class="col-md-6">
                     <label asp-for="Price" class="form-label fw-semibold">Giá bán (VNĐ)</label>
-                    <input asp-for="Price" class="form-control" type="number" step="1000" />
+                    <input asp-for="Price" class="form-control" type="number" min="1" step="1" />
+                    <span asp-validation-for="Price" class="text-danger"></span>
                 </div>
                 <div class="col-md-6">
                     <label asp-for="ImageUrl" class="form-label fw-semibold">Hình ảnh (URL)</label>
