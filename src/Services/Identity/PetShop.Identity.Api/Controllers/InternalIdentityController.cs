@@ -19,11 +19,30 @@ public sealed class InternalIdentityController(IdentityDbContext db, IConfigurat
         var user = await db.Users.Include(x => x.UserRoles).SingleOrDefaultAsync(x => x.Id == userId);
         var role = await db.Roles.SingleOrDefaultAsync(x => x.Name == roleName);
         if (user is null || role is null) return NotFound();
+        // Nếu cấp ShopOwner thì bỏ Customer
+        if (roleName.Equals("ShopOwner", StringComparison.OrdinalIgnoreCase))
+        {
+            var customerRole = await db.Roles.SingleOrDefaultAsync(x => x.Name == "Customer");
+
+            if (customerRole != null)
+            {
+                var customerUserRole = user.UserRoles.FirstOrDefault(x => x.RoleId == customerRole.Id);
+                if (customerUserRole != null)
+                {
+                    db.UserRoles.Remove(customerUserRole);
+                }
+            }
+        }
+        // Thêm role mới nếu chưa có
         if (user.UserRoles.All(x => x.RoleId != role.Id))
         {
-            user.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
-            await db.SaveChangesAsync();
+            user.UserRoles.Add(new UserRole
+            {
+                UserId = user.Id,
+                RoleId = role.Id
+            });
         }
+        await db.SaveChangesAsync();
         return NoContent();
     }
 
