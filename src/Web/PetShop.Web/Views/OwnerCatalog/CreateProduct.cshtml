@@ -11,7 +11,7 @@
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-4">
-        <form method="post" enctype="multipart/form-data">
+        <form method="post" enctype="multipart/form-data" id="productForm">
             <div asp-validation-summary="All" class="text-danger mb-3"></div>
             <div class="row g-3">
                 <div class="col-md-6">
@@ -32,7 +32,7 @@
                     <textarea asp-for="Description" class="form-control" rows="3" placeholder="Mô tả chi tiết sản phẩm..."></textarea>
                 </div>
                 <div class="col-md-6">
-                    <label asp-for="Price" class="form-label fw-semibold">Giá bán (VNĐ)</label>
+                    <label asp-for="Price" class="form-label fw-semibold">Giá bán cơ sở (VNĐ)</label>
                     <input asp-for="Price" class="form-control" type="number" step="1000" />
                 </div>
                 <div class="col-md-6">
@@ -50,27 +50,98 @@
 
             <hr class="my-4" />
 
-            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-tags text-primary me-2"></i>Phân loại sản phẩm / Mã SKU (Tùy chọn)</h5>
-            <div class="alert alert-light border mb-3 small text-muted">
-                <i class="bi bi-info-circle me-1"></i> Nếu không nhập mã SKU, hệ thống sẽ tự tạo mã mặc định cho sản phẩm.
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h5 class="fw-bold text-dark mb-1"><i class="bi bi-tags text-primary me-2"></i>Phân loại sản phẩm / Mã SKU</h5>
+                    <p class="small text-muted mb-0">Thêm nhiều phân loại (ví dụ: Size S/M/L, Gói 1kg/3kg) để khách hàng chọn lựa.</p>
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm fw-bold" id="addVariantBtn">
+                    <i class="bi bi-plus-circle me-1"></i>Thêm phân loại
+                </button>
             </div>
 
-            <div class="row g-3 bg-light p-3 rounded mb-4">
-                <div class="col-md-5">
-                    <label class="form-label small fw-semibold">Tên phân loại</label>
-                    <input name="Variants[0].Name" class="form-control" placeholder="Mặc định" value="Mặc định" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label small fw-semibold">Mã SKU</label>
-                    <input name="Variants[0].Sku" class="form-control" placeholder="VD: DOG-FOOD-01" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small fw-semibold">Giá chênh lệch (+/- VNĐ)</label>
-                    <input name="Variants[0].AdditionalPrice" class="form-control" type="number" value="0" />
+            <div id="variantsContainer">
+                <div class="variant-item row g-3 bg-light p-3 rounded mb-3 border align-items-center">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Tên phân loại</label>
+                        <input name="Variants[0].Name" class="form-control variant-name" placeholder="Mặc định / Gói 1kg / Size S" value="Mặc định" required />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Mã SKU (Tùy chọn)</label>
+                        <input name="Variants[0].Sku" class="form-control variant-sku" placeholder="VD: SKU-01" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Giá chênh lệch (+/- VNĐ)</label>
+                        <input name="Variants[0].AdditionalPrice" class="form-control variant-price" type="number" value="0" />
+                    </div>
+                    <div class="col-md-1 text-end">
+                        <button type="button" class="btn btn-outline-danger btn-sm remove-variant-btn" title="Xóa phân loại này">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-success fw-bold px-4"><i class="bi bi-check-lg me-1"></i>Lưu sản phẩm</button>
+            <button type="submit" class="btn btn-success fw-bold px-4 py-2 mt-2">
+                <i class="bi bi-check-lg me-1"></i>Lưu sản phẩm
+            </button>
         </form>
     </div>
 </div>
+
+@section Scripts {
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const container = document.getElementById("variantsContainer");
+        const addBtn = document.getElementById("addVariantBtn");
+
+        function reindexVariants() {
+            const rows = container.querySelectorAll(".variant-item");
+            rows.forEach((row, index) => {
+                row.querySelector(".variant-name").name = `Variants[${index}].Name`;
+                row.querySelector(".variant-sku").name = `Variants[${index}].Sku`;
+                row.querySelector(".variant-price").name = `Variants[${index}].AdditionalPrice`;
+            });
+        }
+
+        addBtn.addEventListener("click", function () {
+            const count = container.querySelectorAll(".variant-item").length;
+            const newRowHtml = `
+                <div class="variant-item row g-3 bg-light p-3 rounded mb-3 border align-items-center">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Tên phân loại</label>
+                        <input name="Variants[${count}].Name" class="form-control variant-name" placeholder="Ví dụ: Gói 3kg / Size L" required />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Mã SKU (Tùy chọn)</label>
+                        <input name="Variants[${count}].Sku" class="form-control variant-sku" placeholder="VD: SKU-0${count + 1}" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Giá chênh lệch (+/- VNĐ)</label>
+                        <input name="Variants[${count}].AdditionalPrice" class="form-control variant-price" type="number" value="0" />
+                    </div>
+                    <div class="col-md-1 text-end">
+                        <button type="button" class="btn btn-outline-danger btn-sm remove-variant-btn" title="Xóa phân loại này">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>`;
+            container.insertAdjacentHTML("beforeend", newRowHtml);
+            reindexVariants();
+        });
+
+        container.addEventListener("click", function (e) {
+            const removeBtn = e.target.closest(".remove-variant-btn");
+            if (removeBtn) {
+                const row = removeBtn.closest(".variant-item");
+                if (container.querySelectorAll(".variant-item").length > 1) {
+                    row.remove();
+                    reindexVariants();
+                } else {
+                    alert("Sản phẩm phải có ít nhất 1 phân loại.");
+                }
+            }
+        });
+    });
+</script>
+}

@@ -61,11 +61,13 @@
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <label asp-for="ShippingFeePerShop" class="form-label">Phí giao hàng mỗi shop</label>
+                        <label class="form-label">Phí giao hàng mỗi shop</label>
                         <div class="input-group">
-                            <input asp-for="ShippingFeePerShop" class="form-control" />
-                            <span class="input-group-text">VNĐ</span>
+                            <input type="hidden" asp-for="ShippingFeePerShop" value="15000" />
+                            <input class="form-control bg-light fw-bold text-dark" value="15,000" readonly />
+                            <span class="input-group-text fw-semibold">VNĐ</span>
                         </div>
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Phí cố định 15.000 VNĐ cho mỗi Shop trong đơn hàng.</small>
                     </div>
 
                     <div class="mb-4">
@@ -84,7 +86,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-warning btn-lg w-100">
+                    <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold">
                         <i class="bi bi-bag-check me-2"></i>Xác nhận đặt hàng
                     </button>
                 </div>
